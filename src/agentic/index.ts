@@ -15,4 +15,4 @@ export {
 } from "./scenarios/hard-20";
 export { getAgenticHardPlus, AGENTIC_HARD_PLUS } from "./scenarios/hard-plus";
 export { runAgenticSuite, runAgenticHard20, runScenario, writeAgenticReport } from "./runner";
-export { JUDGE_MODEL_ID, JUDGE_PROVIDER } from "./judge";
+export { JUDGE_MODEL_ID } from "./judge";

@@ -14,7 +14,7 @@ import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { LibSQLStore } from "@mastra/libsql";
 import { Observability, MastraStorageExporter, SensitiveDataFilter } from "@mastra/observability";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { resolveModel } from "../core/llm-client";
 import { AGENTIC_SYSTEM_PROMPT } from "../agentic/prompt";
 import { createAgenticTools } from "../agentic/tools";
 import {
@@ -27,7 +27,9 @@ import { createStepQualityScorer } from "../agentic/judge";
 config({ path: resolve(import.meta.dirname, "../../.env") });
 
 const DEFAULT_STUDIO_MODEL =
-  process.env.STUDIO_MODEL?.trim() || "google/gemma-4-31b-it";
+  process.env.STUDIO_MODEL?.trim() ||
+  process.env.EVAL_MODEL?.trim() ||
+  "local-model";
 
 await ensureDefaultFixtures();
 
@@ -40,19 +42,6 @@ const studioSandbox: Sandbox = await createSandbox("studio-session", {
 });
 
 const tools = createAgenticTools(studioSandbox);
-
-function openRouterModel(modelId: string) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY missing — set it in .env for Studio");
-  }
-  const openrouter = createOpenRouter({ apiKey });
-  return openrouter(modelId, {
-    extraBody: {
-      reasoning: { effort: "none", exclude: true },
-    },
-  } as never);
-}
 
 const storage = new LibSQLStore({
   id: "chat-keuangan-studio",
@@ -76,7 +65,7 @@ Org aktif default: personal
 Orgs: personal, yayasan, sekolah — jangan campur.
 Sandbox: in/mutasi.csv, in/conflict.csv, in/rekening.pdf, in/nota-*.png.
 Pakai list_inbox + receipt_ocr untuk foto user — jangan google nota.`,
-  model: openRouterModel(DEFAULT_STUDIO_MODEL) as never,
+  model: resolveModel(DEFAULT_STUDIO_MODEL) as never,
   tools,
   memory,
   scorers: {

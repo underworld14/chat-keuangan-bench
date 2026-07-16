@@ -93,8 +93,8 @@ export function scatterSvg(opts: {
   /** Fixed X domain (same units as point.x). When set, skips auto-fit from data. */
   xMin?: number;
   xMax?: number;
-  /** Tick values in the same units as point.x (cost ascending left→right) */
-  xTicksTicks?: number[];
+  /** Tick values in the same units as point.x (ascending left→right) */
+  xMetricTicks?: number[];
   /** Format tick label from numeric cost */
   formatXTick?: (n: number) => string;
   shortLabel?: (label: string) => string;

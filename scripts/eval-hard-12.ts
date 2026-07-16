@@ -5,9 +5,8 @@
  * phantom income, td→date, voice corrections, patungan vs total, non-transaction curhat.
  *
  * Run:
- *   bun run scripts/eval-hard-12.ts
- *   bun run scripts/eval-hard-12.ts --model google/gemini-3-flash-preview
- *   bun run scripts/eval-hard-12.ts --dry-run
+ *   bun run eval:hard-12 -- --models <lm-studio-id>
+ *   bun run eval:hard-12 -- --dry-run
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -20,16 +19,10 @@ import {
   type ParsedFinance,
   type Scenario,
 } from "../src/core/eval-core.ts";
+import { applyLlmConfigOverrides, getLlmConfig } from "../src/core/llm-client.ts";
 
-const HARD_12_MODELS = [
-  "google/gemini-3-flash-preview",
-  "google/gemini-3.1-flash-lite",
-  "z-ai/glm-4.5",
-  "z-ai/glm-4.7",
-  "openai/gpt-oss-120b",
-  "inclusionai/ling-2.6-1t",
-  "google/gemma-4-31b-it",
-] as const;
+/** Pass --model <lm-studio-id> (no default cloud roster). */
+const HARD_12_MODELS: string[] = [];
 
 type HardScenario = Scenario & {
   /** What makes this scenario hard — for the report */
@@ -38,7 +31,7 @@ type HardScenario = Scenario & {
   altStrictIds?: string[];
 };
 
-const HARD_SCENARIOS: HardScenario[] = [
+export const HARD_SCENARIOS: HardScenario[] = [
   {
     id: "hard-bakmi-qty-22",
     style: "ambiguous_amount",
@@ -553,14 +546,20 @@ interface ModelSummary {
 function parseArgs(argv: string[]) {
   let model: string | undefined;
   let dryRun = false;
+  let baseUrl: string | undefined;
+  let apiKey: string | undefined;
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") dryRun = true;
     else if (a === "--model" && argv[i + 1]) {
       model = argv[++i];
+    } else if (a === "--base-url" && argv[i + 1]) {
+      baseUrl = argv[++i];
+    } else if (a === "--api-key" && argv[i + 1]) {
+      apiKey = argv[++i];
     }
   }
-  return { model, dryRun };
+  return { model, dryRun, baseUrl, apiKey };
 }
 
 function buildMarkdownReport(
@@ -571,7 +570,7 @@ function buildMarkdownReport(
   const lines: string[] = [
     `# Finance Parse Hard-12 Eval — ${runAt}`,
     "",
-    "## Models (7, excluding deepseek-v4-flash & deepseek-v4-pro)",
+    "## Models",
     "",
     HARD_12_MODELS.map((m) => `- \`${m}\``).join("\n"),
     "",
@@ -638,11 +637,16 @@ function buildMarkdownReport(
 }
 
 async function main() {
-  const { model: singleModel, dryRun } = parseArgs(process.argv);
+  const { model: singleModel, dryRun, baseUrl, apiKey } = parseArgs(process.argv);
+  applyLlmConfigOverrides({ baseUrl, apiKey });
   const models = singleModel ? [singleModel] : [...HARD_12_MODELS];
+  if (!models.length) {
+    throw new Error("Pass --model <lm-studio-id>");
+  }
   const runAt = new Date().toISOString();
 
   console.log(`Finance Parse HARD-12 eval — ${runAt}`);
+  console.log(`Base URL: ${getLlmConfig().baseURL}`);
   console.log(`Models: ${models.join(", ")}\n`);
 
   if (dryRun) {
@@ -782,7 +786,9 @@ async function main() {
   console.log(`Analysis: ${mdPath}`);
 }
 
-main().catch((err) => {
-  console.error("FATAL:", err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error("FATAL:", err);
+    process.exit(1);
+  });
+}

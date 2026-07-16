@@ -9,13 +9,13 @@ import {
   scoreIfBench,
   scoreCombinedJudge,
   JUDGE_MODEL_ID,
-  JUDGE_PROVIDER,
   JUDGE_MODE,
 } from "./judge";
 import { AGENTIC_PROMPT_STATS, AGENTIC_SYSTEM_PROMPT } from "./prompt";
 import { closeSandbox, createSandbox, ensureDefaultFixtures } from "./sandbox";
 import { getAgenticHard20, getAllAgenticScenarios } from "./scenarios/hard-20";
 import { getAgenticHardPlus } from "./scenarios/hard-plus";
+import { getLlmConfig } from "../core/llm-client";
 import type {
   AgenticScenario,
   IfBenchResult,
@@ -63,7 +63,6 @@ Saat INSERT, set org_id secara eksplisit.`;
 export async function runScenario(opts: {
   scenario: AgenticScenario;
   modelId: string;
-  providerOnly?: string[];
   skipJudge?: boolean;
   sampling?: AgenticSampling;
 }): Promise<ScenarioRunResult> {
@@ -78,7 +77,6 @@ export async function runScenario(opts: {
   const { agent, memory } = createFinanceAgent({
     modelId: opts.modelId,
     sandbox,
-    providerOnly: opts.providerOnly,
     instructions: buildInstructions(opts.scenario),
     sampling: opts.sampling,
   });
@@ -254,7 +252,6 @@ export async function runScenario(opts: {
 
 export async function runAgenticSuite(opts: {
   modelId: string;
-  providerOnly?: string[];
   limit?: number;
   ids?: string[];
   suite?: "hard" | "hardplus" | "all";
@@ -281,9 +278,11 @@ export async function runAgenticSuite(opts: {
 
   const concurrency = Math.max(1, opts.concurrency ?? 4);
 
-  console.log(`Agentic suite=${suite} — model=${opts.modelId}`);
   console.log(
-    `Judge=${JUDGE_MODEL_ID}${JUDGE_PROVIDER ? ` @ ${JUDGE_PROVIDER}` : ""} mode=${JUDGE_MODE} effort=${process.env.JUDGE_REASONING_EFFORT?.trim() || "high"} | prompt=${AGENTIC_PROMPT_STATS.chars} chars (~${AGENTIC_PROMPT_STATS.pctOfPrevious}% of prior compressed; IF rules=${AGENTIC_PROMPT_STATS.ifRuleCount})`,
+    `Agentic suite=${suite} — model=${opts.modelId} baseURL=${getLlmConfig().baseURL}`,
+  );
+  console.log(
+    `Judge=${JUDGE_MODEL_ID} mode=${JUDGE_MODE} | prompt=${AGENTIC_PROMPT_STATS.chars} chars (~${AGENTIC_PROMPT_STATS.pctOfPrevious}% of prior compressed; IF rules=${AGENTIC_PROMPT_STATS.ifRuleCount})`,
   );
   console.log(
     `Scenarios: ${scenarios.length} concurrency=${concurrency}${opts.skipJudge ? " (skip judge)" : ""}\n`,
@@ -312,7 +311,6 @@ export async function runAgenticSuite(opts: {
       const r = await runScenario({
         scenario,
         modelId: opts.modelId,
-        providerOnly: opts.providerOnly,
         skipJudge: opts.skipJudge,
         sampling: opts.sampling,
       });
@@ -338,11 +336,11 @@ export async function runAgenticSuite(opts: {
     ordered.reduce((s, r) => s + r.ifBench.score, 0) / Math.max(ordered.length, 1);
   const summary = {
     modelId: opts.modelId,
+    baseURL: getLlmConfig().baseURL,
     suite,
     concurrency,
-    providerOnly: opts.providerOnly ?? null,
     sampling: opts.sampling ?? { temperature: 0 },
-    judge: { model: JUDGE_MODEL_ID, provider: JUDGE_PROVIDER || null, mode: JUDGE_MODE },
+    judge: { model: JUDGE_MODEL_ID, mode: JUDGE_MODE },
     prompt: AGENTIC_PROMPT_STATS,
     scoring: "det40 + rub25 + step25 + ifBench10",
     scenarioCount: ordered.length,
@@ -358,7 +356,6 @@ export async function runAgenticSuite(opts: {
 /** @deprecated use runAgenticSuite */
 export const runAgenticHard20 = (opts: {
   modelId: string;
-  providerOnly?: string[];
   limit?: number;
   ids?: string[];
   skipJudge?: boolean;

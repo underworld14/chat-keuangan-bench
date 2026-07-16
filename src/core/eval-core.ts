@@ -6,112 +6,21 @@
 
 import { config } from "dotenv";
 import { resolve } from "node:path";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateText, Output, type LanguageModel } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
+import {
+  applyLlmConfigOverrides,
+  getLlmConfig,
+  resolveModel,
+} from "./llm-client.ts";
 
 config({ path: resolve(import.meta.dirname, "../../.env") });
 
-const DEFAULT_MODEL = "google/gemma-4-31b-it";
-
-/** Default 2-model compare. */
-const COMPARE_MODELS = [
-  "openai/gpt-oss-120b",
-  "deepseek/deepseek-v4-flash",
-] as const;
-
-/** 4-model battle roster (best candidates from prior evals). */
-const BATTLE_MODELS = [
-  "openai/gpt-oss-120b",
-  "deepseek/deepseek-v4-flash",
-  "z-ai/glm-4.5",
-  "z-ai/glm-4.7",
-] as const;
+/** Default local model id (override with --model / EVAL_MODEL). */
+const DEFAULT_MODEL =
+  process.env.EVAL_MODEL?.trim() || "local-model";
 
 type Suite = "base" | "stress" | "all";
-
-type OpenRouterProviderOptions = {
-  only?: string[];
-  allow_fallbacks?: boolean;
-};
-
-type ModelPreset = {
-  label: string;
-  reasoning: { effort: "none" | "low"; exclude: true };
-  openrouterProvider?: OpenRouterProviderOptions;
-  /** Route via api.deepseek.com instead of OpenRouter. */
-  directDeepSeek?: boolean;
-};
-
-const DEEPSEEK_DIRECT_SLUG = "deepseek-v4-pro";
-
-const MODEL_PRESETS: Record<string, ModelPreset> = {
-  "openai/gpt-oss-120b": {
-    label: "gpt-oss-120b @ Groq (reasoning excluded, effort low)",
-    reasoning: { effort: "low", exclude: true },
-    openrouterProvider: { only: ["groq"], allow_fallbacks: false },
-  },
-  "deepseek/deepseek-v4-flash": {
-    label: "deepseek-v4-flash @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "google/gemma-4-31b-it": {
-    label: "gemma-4-31b-it @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "z-ai/glm-4.5": {
-    label: "glm-4.5 @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "z-ai/glm-4.7": {
-    label: "glm-4.7 @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "z-ai/glm-4.7-flash": {
-    label: "glm-4.7-flash @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "google/gemini-3-flash-preview": {
-    label: "gemini-3-flash-preview @ OpenRouter (reasoning minimal)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "google/gemini-3.1-flash-lite-preview": {
-    label: "gemini-3.1-flash-lite-preview @ OpenRouter (reasoning minimal)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "google/gemini-3.1-flash-lite": {
-    label: "gemini-3.1-flash-lite @ OpenRouter (reasoning minimal)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  [DEEPSEEK_DIRECT_SLUG]: {
-    label: "deepseek-v4-pro @ DeepSeek API official (thinking off)",
-    reasoning: { effort: "none", exclude: true },
-    directDeepSeek: true,
-  },
-  "deepseek/deepseek-v4-pro": {
-    label: "deepseek-v4-pro @ DeepSeek API official (thinking off)",
-    reasoning: { effort: "none", exclude: true },
-    directDeepSeek: true,
-  },
-  "inclusionai/ling-2.6-1t": {
-    label: "ling-2.6-1t @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "xiaomi/mimo-v2.5-pro": {
-    label: "mimo-v2.5-pro @ OpenRouter Xiaomi fp8 (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-    openrouterProvider: { only: ["xiaomi/fp8"], allow_fallbacks: false },
-  },
-  "nvidia/nemotron-3-nano-30b-a3b": {
-    label: "nemotron-3-nano-30b-a3b @ OpenRouter (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-  "deepseek/deepseek-v4-pro@openrouter": {
-    label: "deepseek-v4-pro @ OpenRouter default routing (reasoning off)",
-    reasoning: { effort: "none", exclude: true },
-  },
-};
 
 export const financeParseSchema = z.object({
   entries: z.array(
@@ -312,12 +221,12 @@ Tentukan type dari ARAH aliran uang bagi pengguna yang bicara:
 
 PEMASUKAN (uang MASUK ke user/rekening/kas):
 - Kata kunci: terima, dapet/dapat, masuk, cair, gaji, THR, refund, dikembalikan, transfer masuk, setoran (dari wali/orang lain), donasi masuk, pemasukan, dibayarkan ke saya, honor, fee diterima
-- Contoh: "duit masuk dari donasi 2jt" → pemasukan | "refund tokopedia masuk" → pemasukan | "terima setoran wali 750rb" → pemasukan
+- Contoh: "komisi lomba cair 1,3jt" → pemasukan | "kembalian deposit masuk" → pemasukan | "terima titipan kas RT 640rb" → pemasukan
 - JANGAN tandai gaji/THR/refund/transfer masuk/setoran sebagai pengeluaran
 
 PENGELUARAN (uang KELUAR dari user):
 - Kata kunci: beli, bayar, jajan, top up, ongkir, parkir, listrik, zakat/infaq KELUAR, catat pengeluaran, bon, utang dibayar
-- Contoh: "beli bensin 50k" → pengeluaran | "bayar zakat 180rb" → pengeluaran
+- Contoh: "isi solar 90rb" → pengeluaran | "bayar iuran warga 175rb" → pengeluaran
 - Donasi/zakat yang user BAYAR = pengeluaran. Donasi yang user TERIMA = pemasukan.
 
 Campuran dalam satu pesan: buat entri TERPISAH dengan type berbeda jika perlu.
@@ -327,8 +236,8 @@ Campuran dalam satu pesan: buat entri TERPISAH dengan type berbeda jika perlu.
 - "50k", "50rb" → 50000
 - "1,5jt", "1.5 juta", "4,5jt" → 1500000 / 4500000
 - "Rp 15.000" / "87.500" → 15000 / 87500 (titik = pemisah ribuan)
-- "800an" tanpa satuan → biasanya 800000; ambigu=true jika tidak jelas
-- "2 2 nya" / "dua-duanya" / "@45rb" × N orang → hitung per item; jangan salin nominal item sebelahnya
+- "<angka>an" tanpa satuan (mis. "300an") → biasanya ratusan ribu; ambigu=true jika tidak jelas
+- Pola "<N> <N> nya" / "semuanya" / "@<harga>" × N orang → hitung per item; jangan salin nominal item sebelahnya
 - Setiap baris item WAJIB punya jumlah sendiri — JANGAN copy-paste harga item lain
 
 ═══ ATURAN TANGGAL (tanggal_hint) ═══
@@ -341,7 +250,7 @@ Campuran dalam satu pesan: buat entri TERPISAH dengan type berbeda jika perlu.
 ═══ ATURAN KONTEN ═══
 - Satu pesan bisa banyak entri.
 - Split bill: catat bagian user ("punyaku 30rb").
-- Koreksi di tengah kalimat: pakai angka TERAKHIR yang dikoreksi user ("15rb... eh 50rb" → 50000).
+- Koreksi di tengah kalimat: pakai angka TERAKHIR yang dikoreksi user ("8rb... eh 23rb" → 23000).
 - Obrolan tanpa transaksi riil (curhat, salam, rencana belum bayar) → bukan_transaksi=true, entries=[].
 - Nominal/item ragu → ambigu=true + catatan_ambigu singkat.
 - deskripsi: ringkas Bahasa Indonesia (barang/jasa, bukan kalimat penuh).
@@ -361,7 +270,7 @@ Campuran dalam satu pesan: buat entri TERPISAH dengan type berbeda jika perlu.
 
 Kembalikan HANYA JSON valid.`;
 
-const SCENARIOS: Scenario[] = [
+export const SCENARIOS: Scenario[] = [
   {
     id: "user-example-maren-bakmi",
     style: "casual_slang",
@@ -617,7 +526,7 @@ const SCENARIOS: Scenario[] = [
 ];
 
 /** 12 extreme stress tests — target known model weaknesses from prior evals. */
-const STRESS_SCENARIOS: Scenario[] = [
+export const STRESS_SCENARIOS: Scenario[] = [
   {
     id: "stress-gaji-masuk-rekening",
     style: "stress_extreme",
@@ -663,7 +572,7 @@ const STRESS_SCENARIOS: Scenario[] = [
       { type: "pengeluaran", jumlah: 28000, deskripsiIncludes: ["grab"] },
       { type: "pengeluaran", jumlah: 28000, deskripsiIncludes: ["kopi"] },
     ],
-    notes: "deepseek weakness: copy adjacent amount",
+    notes: "common failure: copy adjacent amount",
   },
   {
     id: "stress-shopee-3-harga-bedain",
@@ -870,79 +779,26 @@ function parseArgs(argv: string[]) {
   let model = DEFAULT_MODEL;
   let limit: number | undefined;
   let dryRun = false;
-  let compare = false;
-  let battle = false;
   let suite: Suite = "all";
   let models: string[] | undefined;
+  let baseUrl: string | undefined;
+  let apiKey: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--model" && argv[i + 1]) model = argv[++i] ?? model;
     else if (a === "--models" && argv[i + 1]) {
       models = (argv[++i] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-      compare = true;
     }
     else if (a === "--limit" && argv[i + 1]) limit = Number(argv[++i]);
     else if (a === "--dry-run") dryRun = true;
-    else if (a === "--compare") compare = true;
-    else if (a === "--battle") battle = true;
+    else if (a === "--base-url" && argv[i + 1]) baseUrl = argv[++i];
+    else if (a === "--api-key" && argv[i + 1]) apiKey = argv[++i];
     else if (a === "--suite" && argv[i + 1]) {
       const s = argv[++i];
       if (s === "base" || s === "stress" || s === "all") suite = s;
     }
   }
-  return { model, limit, dryRun, compare, battle, suite, models };
-}
-
-function presetFor(modelId: string): ModelPreset {
-  return (
-    MODEL_PRESETS[modelId] ?? {
-      label: `${modelId} @ OpenRouter (reasoning off)`,
-      reasoning: { effort: "none", exclude: true },
-    }
-  );
-}
-
-function isDirectDeepSeek(modelId: string): boolean {
-  return (
-    modelId === DEEPSEEK_DIRECT_SLUG ||
-    modelId === "deepseek/deepseek-v4-pro" ||
-    presetFor(modelId).directDeepSeek === true
-  );
-}
-
-function resolveDeepSeekOfficial(): LanguageModel {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) throw new Error("DEEPSEEK_API_KEY missing — set in apps/ai/.env");
-
-  const deepseek = createOpenAICompatible({
-    name: "deepseek",
-    baseURL: "https://api.deepseek.com",
-    apiKey,
-    transformRequestBody: (body) => ({
-      ...body,
-      thinking: { type: "disabled" },
-      enable_thinking: false,
-    }),
-  });
-  return deepseek(DEEPSEEK_DIRECT_SLUG);
-}
-
-function resolveEvalModel(modelId: string): LanguageModel {
-  if (isDirectDeepSeek(modelId)) {
-    return resolveDeepSeekOfficial();
-  }
-
-  const preset = presetFor(modelId);
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY missing — set in apps/ai/.env");
-
-  const openrouter = createOpenRouter({ apiKey });
-  return openrouter(modelId, {
-    ...(preset.openrouterProvider
-      ? { provider: preset.openrouterProvider }
-      : {}),
-    extraBody: { reasoning: preset.reasoning },
-  });
+  return { model, limit, dryRun, suite, models, baseUrl, apiKey };
 }
 
 export interface ParseMessageOptions {
@@ -950,87 +806,36 @@ export interface ParseMessageOptions {
   systemPrompt?: string;
   /** Prepended to user message (e.g. lightweight datetime anchor). */
   userPrefix?: string;
-}
-
-async function parseMessageViaRawOpenRouter(
-  modelId: string,
-  text: string,
-  preset: ModelPreset,
-  systemPrompt: string,
-): Promise<ParsedFinance> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY missing");
-
-  const body: Record<string, unknown> = {
-    model: modelId,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: text },
-    ],
-    temperature: 0,
-    max_tokens: 2048,
-    reasoning: preset.reasoning,
-    response_format: { type: "json_object" },
-  };
-  if (preset.openrouterProvider) {
-    body.provider = preset.openrouterProvider;
-  }
-
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://github.com/volfadar/chat-keuangan-bench",
-      "X-Title": "chat-keuangan-bench",
-    },
-    body: JSON.stringify(body),
-  });
-  const payload = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-    error?: { message?: string };
-  };
-  if (!res.ok) {
-    throw new Error(`OpenRouter HTTP ${res.status}: ${payload.error?.message ?? res.statusText}`);
-  }
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content) throw new Error("OpenRouter returned empty content");
-  return parseFinanceJson(content);
+  /**
+   * Rethrow the structured-output error instead of retrying as plain JSON.
+   *
+   * The plain-json path runs `parseFinanceJson`, whose normalizers coerce rather
+   * than reject (unknown `type` becomes "pengeluaran", `bukan_transaksi` is
+   * inferred). That leniency is correct when grading a model and wrong when
+   * minting a gold label, so SFT generation opts out. Bench callers leave it
+   * unset and keep the fallback.
+   */
+  noFallback?: boolean;
+  /** Abort the underlying generation after this signal fires. */
+  abortSignal?: AbortSignal;
 }
 
 export async function parseMessage(
   modelId: string,
   text: string,
   options?: ParseMessageOptions,
-): Promise<{ parsed: ParsedFinance; ms: number; path: "structured" | "plain-json" | "raw-fetch" }> {
-  const preset = presetFor(modelId);
+): Promise<{ parsed: ParsedFinance; ms: number; path: "structured" | "plain-json" }> {
   const systemPrompt = options?.systemPrompt ?? SYSTEM_PROMPT;
   const prompt = options?.userPrefix ? `${options.userPrefix}\n\n${text}` : text;
   const t0 = Date.now();
-
-  if (modelId.startsWith("z-ai/glm")) {
-    const parsed = await parseMessageViaRawOpenRouter(modelId, prompt, preset, systemPrompt);
-    return { parsed, ms: Date.now() - t0, path: "raw-fetch" };
-  }
-
-  const deepSeekDirect = isDirectDeepSeek(modelId);
-  const model = resolveEvalModel(modelId);
+  const model = resolveModel(modelId);
   const genBase = {
     model,
     system: systemPrompt,
-    ...(deepSeekDirect
-      ? {}
-      : {
-          providerOptions: {
-            openrouter: {
-              reasoning: preset.reasoning,
-              ...(preset.openrouterProvider ? { provider: preset.openrouterProvider } : {}),
-            },
-          },
-        }),
     prompt,
     temperature: 0,
     maxOutputTokens: 2048,
+    abortSignal: options?.abortSignal,
   };
 
   try {
@@ -1039,7 +844,8 @@ export async function parseMessage(
       output: Output.object({ schema: financeParseSchema }),
     });
     return { parsed: output, ms: Date.now() - t0, path: "structured" };
-  } catch {
+  } catch (err) {
+    if (options?.noFallback) throw err;
     const r = await generateText({
       ...genBase,
       system: `${systemPrompt}\n\nKembalikan HANYA JSON valid sesuai schema. Tanpa markdown fence.`,
@@ -1059,10 +865,9 @@ interface EvalRunResult {
 }
 
 async function runEval(modelId: string, scenarios: Scenario[]): Promise<EvalRunResult> {
-  const preset = presetFor(modelId);
   console.log(`\n${"=".repeat(72)}`);
   console.log(`Model: ${modelId}`);
-  console.log(`Config: ${preset.label}`);
+  console.log(`Base URL: ${getLlmConfig().baseURL}`);
   console.log(`Scenarios: ${scenarios.length}\n`);
 
   const byStyle = new Map<ChatStyle, { pass: number; total: number }>();
@@ -1114,14 +919,16 @@ async function runEval(modelId: string, scenarios: Scenario[]): Promise<EvalRunR
 }
 
 async function main() {
-  const { model, limit, dryRun, compare, battle, suite, models: modelsArg } = parseArgs(
+  const { model, limit, dryRun, suite, models: modelsArg, baseUrl, apiKey } = parseArgs(
     process.argv.slice(2),
   );
+  applyLlmConfigOverrides({ baseUrl, apiKey });
   const allScenarios = scenariosForSuite(suite);
   const scenarios = limit ? allScenarios.slice(0, limit) : allScenarios;
-  const models = modelsArg ?? (battle ? [...BATTLE_MODELS] : compare ? [...COMPARE_MODELS] : [model]);
+  const models = modelsArg?.length ? modelsArg : [model];
 
   console.log(`\n=== Indonesian Finance Parse Eval ===`);
+  console.log(`Base URL: ${getLlmConfig().baseURL}`);
   console.log(`Suite: ${suite} (${scenarios.length} scenarios)`);
 
   if (dryRun) {
@@ -1151,7 +958,6 @@ async function main() {
   }
 }
 
-export type { ParsedFinance, ExpectedEntry, Scenario };
 
 if (import.meta.main) {
   main().catch((err) => {

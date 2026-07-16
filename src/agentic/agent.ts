@@ -1,58 +1,26 @@
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
 import { InMemoryStore } from "@mastra/core/storage";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { AGENTIC_SYSTEM_PROMPT } from "./prompt";
 import { createAgenticTools } from "./tools";
 import type { Sandbox } from "./sandbox";
+import { resolveModel } from "../core/llm-client";
 
-/** OpenRouter sampling knobs (subset used by provider matrix experiments). */
+/** Optional sampling knobs (Mastra modelSettings). */
 export type AgenticSampling = {
   temperature?: number;
   top_p?: number;
-  top_k?: number;
-  min_p?: number;
   presence_penalty?: number;
-  repetition_penalty?: number;
   frequency_penalty?: number;
 };
 
-export function createOpenRouterModel(
-  modelId: string,
-  providerOnly?: string[],
-  sampling?: AgenticSampling,
-) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY missing");
-  const openrouter = createOpenRouter({ apiKey });
-
-  // gpt-oss requires reasoning enabled; most other bench models prefer it off.
-  const reasoning =
-    modelId.includes("gpt-oss")
-      ? { effort: "low", exclude: true }
-      : { effort: "none", exclude: true };
-
-  const providers =
-    providerOnly?.length
-      ? providerOnly
-      : modelId.includes("gpt-oss")
-        ? ["groq"]
-        : undefined;
-
-  const extra: Record<string, unknown> = { reasoning, ...(sampling ?? {}) };
-  if (providers?.length) {
-    extra.provider = { only: providers, allow_fallbacks: false };
-  }
-  return openrouter(modelId, {
-    // SDK accepts extraBody for OpenRouter routing + sampling
-    extraBody: extra,
-  } as never);
+export function createEvalModel(modelId: string) {
+  return resolveModel(modelId);
 }
 
 export function createFinanceAgent(opts: {
   modelId: string;
   sandbox: Sandbox;
-  providerOnly?: string[];
   agentId?: string;
   instructions?: string;
   sampling?: AgenticSampling;
@@ -72,7 +40,7 @@ export function createFinanceAgent(opts: {
     name: "chat-keuangan-agentic",
     description: "Indonesian pencatatan keuangan multi-turn agent with tools",
     instructions: opts.instructions ?? AGENTIC_SYSTEM_PROMPT,
-    model: createOpenRouterModel(opts.modelId, opts.providerOnly, opts.sampling) as never,
+    model: createEvalModel(opts.modelId) as never,
     tools,
     memory,
     defaultOptions: {

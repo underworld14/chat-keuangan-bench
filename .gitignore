@@ -4,6 +4,10 @@ node_modules/
 *.log
 .DS_Store
 .runs/
+# `**` is required: mlx_lm.lora takes a directory, so rows live at
+# data/sft/<run-stamp>/train.jsonl, which a bare `*.jsonl` does not match.
+data/sft/**/*.jsonl
+!data/sft/.gitkeep
 # Large per-run JSON in docs/results/ root (keep runs/ tracked)
 docs/results/2026-*-finance-hard-25-results.json
 !docs/results/runs/

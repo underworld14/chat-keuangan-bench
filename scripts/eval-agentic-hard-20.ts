@@ -1,41 +1,38 @@
 /**
- * eval-agentic-hard-20.ts — Multi-turn agentic finance bench.
+ * eval-agentic-hard-20.ts — Multi-turn agentic finance bench (local OpenAI-compatible).
  *
  * Suites:
  *   --suite hard      (20 classic)
  *   --suite hardplus  (8 multi-tenant / contamination / auditor / analysis)
  *   --suite all       (default: 28)
  *
- *   bun run scripts/eval-agentic-hard-20.ts --model google/gemma-4-31b-it --suite hardplus
+ *   bun run scripts/eval-agentic-hard-20.ts --model qwen2.5-7b-instruct --suite hardplus
  *   bun run scripts/eval-agentic-hard-20.ts --dry-run --suite all
- *   bun run scripts/eval-agentic-hard-20.ts --model qwen/qwen3.6-35b-a3b --provider akashml/fp8 --sampling det0
+ *   bun run scripts/eval-agentic-hard-20.ts --model local-model --concurrency 1 --skip-judge
  */
 
 import { runAgenticSuite, writeAgenticReport } from "../src/agentic/runner";
 import type { AgenticSampling } from "../src/agentic/agent";
+import {
+  applyLlmConfigOverrides,
+  getLlmConfig,
+} from "../src/core/llm-client";
 
 const SAMPLING_PRESETS: Record<string, AgenticSampling> = {
   det0: { temperature: 0 },
-  mild: { temperature: 0.3, top_p: 0.9, top_k: 40 },
-  friend: {
-    temperature: 1.0,
-    top_p: 0.95,
-    top_k: 20,
-    min_p: 0.0,
-    presence_penalty: 1.5,
-    repetition_penalty: 1.0,
-  },
+  mild: { temperature: 0.3, top_p: 0.9 },
 };
 
 function parseArgs(argv: string[]) {
-  let model = "google/gemma-4-31b-it";
+  let model = process.env.EVAL_MODEL?.trim() || "local-model";
   let limit: number | undefined;
   let dryRun = false;
   let skipJudge = false;
-  let provider: string | undefined;
   let suite: "hard" | "hardplus" | "all" = "all";
   let concurrency = 4;
   let samplingPreset: string | undefined;
+  let baseUrl: string | undefined;
+  let apiKey: string | undefined;
   const ids: string[] = [];
 
   for (let i = 2; i < argv.length; i++) {
@@ -44,7 +41,8 @@ function parseArgs(argv: string[]) {
     else if (a === "--limit" && argv[i + 1]) limit = Number(argv[++i]);
     else if (a === "--dry-run") dryRun = true;
     else if (a === "--skip-judge") skipJudge = true;
-    else if (a === "--provider" && argv[i + 1]) provider = argv[++i]!;
+    else if (a === "--base-url" && argv[i + 1]) baseUrl = argv[++i]!;
+    else if (a === "--api-key" && argv[i + 1]) apiKey = argv[++i]!;
     else if (a === "--concurrency" && argv[i + 1]) concurrency = Number(argv[++i]);
     else if (a === "--sampling" && argv[i + 1]) samplingPreset = argv[++i]!;
     else if (a === "--suite" && argv[i + 1]) {
@@ -70,14 +68,29 @@ function parseArgs(argv: string[]) {
     }
   }
 
-  return { model, limit, dryRun, skipJudge, provider, ids, suite, concurrency, sampling, samplingPreset };
+  return {
+    model,
+    limit,
+    dryRun,
+    skipJudge,
+    ids,
+    suite,
+    concurrency,
+    sampling,
+    samplingPreset,
+    baseUrl,
+    apiKey,
+  };
 }
 
 async function main() {
   const args = parseArgs(process.argv);
+  applyLlmConfigOverrides({ baseUrl: args.baseUrl, apiKey: args.apiKey });
+
+  console.log(`Base URL: ${getLlmConfig().baseURL}`);
+
   const { results, summary } = await runAgenticSuite({
     modelId: args.model,
-    providerOnly: args.provider ? [args.provider] : undefined,
     limit: args.limit,
     ids: args.ids.length ? args.ids : undefined,
     suite: args.suite,

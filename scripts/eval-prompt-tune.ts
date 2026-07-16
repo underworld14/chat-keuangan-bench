@@ -17,9 +17,9 @@
  * Does NOT: embed test inputs/outputs, scenario IDs, or expected JSON in the prompt.
  *
  * Run:
- *   bun run scripts/eval-prompt-tune.ts
- *   bun run scripts/eval-prompt-tune.ts --variant anchor-system
- *   bun run scripts/eval-prompt-tune.ts --dry-run
+ *   bun run scripts/eval-prompt-tune.ts --model <lm-studio-id>
+ *   bun run scripts/eval-prompt-tune.ts --models a,b --variant anchor-system
+ *   bun run scripts/eval-prompt-tune.ts --dry-run --model local-model
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -33,21 +33,18 @@ import {
   type ParsedFinance,
   type Scenario,
 } from "../src/core/eval-core.ts";
-
-const TOP_5_MODELS = [
-  "google/gemma-4-31b-it",
-  "google/gemini-3.1-flash-lite",
-  "z-ai/glm-4.5",
-  "z-ai/glm-4.7",
-  "google/gemini-3-flash-preview",
-] as const;
+import { applyLlmConfigOverrides, getLlmConfig } from "../src/core/llm-client.ts";
 
 type AltStrictRule = { kind: "qtyMerge"; keyword: string; unit: number; count: number };
 
 type RetestScenario = Scenario & {
   failureMode: string;
   altStrict?: AltStrictRule;
-  /** Models that failed this scenario in hard-25 (for focused reporting). */
+  /**
+   * Local model ids that failed this scenario in hard-25 (for focused reporting).
+   * Emptied at the local pivot — the previous entries were OpenRouter ids that can
+   * no longer be evaluated. Repopulate with LM Studio ids as local regressions show up.
+   */
   knownFailures: string[];
 };
 
@@ -58,7 +55,7 @@ const RETEST_SCENARIOS: RetestScenario[] = [
     style: "ambiguous_amount",
     failureMode: "qty×unit ('5rb 4 4 nya') — gemma collapsed to 1×5rb",
     text: "td sore beli pulsa 25rb sama jajan cilok 4 tusuk 5rb 4 4 nya",
-    knownFailures: ["google/gemma-4-31b-it"],
+    knownFailures: [],
     expectEntries: [
       { type: "pengeluaran", jumlah: 25000, tanggal_hint: "hari_ini", deskripsiIncludes: ["pulsa"] },
       { type: "pengeluaran", jumlah: 5000, tanggal_hint: "hari_ini", deskripsiIncludes: ["cilok"], ambigu: true },
@@ -73,12 +70,7 @@ const RETEST_SCENARIOS: RetestScenario[] = [
     style: "multi_entry",
     failureMode: "dot separators OK but 'td malem' date → 4 models used kemarin",
     text: "bayar wifi 350.000 sama token listrik 102.500 td malem",
-    knownFailures: [
-      "google/gemini-3.1-flash-lite",
-      "z-ai/glm-4.5",
-      "z-ai/glm-4.7",
-      "google/gemini-3-flash-preview",
-    ],
+    knownFailures: [],
     expectEntries: [
       { type: "pengeluaran", jumlah: 350000, tanggal_hint: "hari_ini", deskripsiIncludes: ["wifi"] },
       { type: "pengeluaran", jumlah: 102500, tanggal_hint: "hari_ini", deskripsiIncludes: ["token", "listrik"] },
@@ -89,7 +81,7 @@ const RETEST_SCENARIOS: RetestScenario[] = [
     style: "ambiguous_amount",
     failureMode: "self-correction OK but GLM tagged tadi pagi as kemarin",
     text: "ojek ke stasiun... 20rb... eh bukan, 35rb... iya 35rb deh tadi pagi",
-    knownFailures: ["z-ai/glm-4.5", "z-ai/glm-4.7"],
+    knownFailures: [],
     expectEntries: [
       { type: "pengeluaran", jumlah: 35000, tanggal_hint: "hari_ini", deskripsiIncludes: ["ojek"] },
     ],
@@ -99,7 +91,7 @@ const RETEST_SCENARIOS: RetestScenario[] = [
     style: "casual_slang",
     failureMode: "GLM misread ceban/goceng (100/500 or merged 15rb)",
     text: "tadi jajan es teh ceban sama gorengan goceng",
-    knownFailures: ["z-ai/glm-4.5", "z-ai/glm-4.7"],
+    knownFailures: [],
     expectEntries: [
       { type: "pengeluaran", jumlah: 10000, tanggal_hint: "hari_ini", deskripsiIncludes: ["teh"] },
       { type: "pengeluaran", jumlah: 5000, tanggal_hint: "hari_ini", deskripsiIncludes: ["gorengan"] },
@@ -361,12 +353,24 @@ interface VariantSummary {
 function parseArgs(argv: string[]) {
   let variant: string | undefined;
   let dryRun = false;
+  let model: string | undefined;
+  let models: string[] | undefined;
+  let baseUrl: string | undefined;
+  let apiKey: string | undefined;
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") dryRun = true;
     else if (a === "--variant" && argv[i + 1]) variant = argv[++i];
+    else if (a === "--model" && argv[i + 1]) model = argv[++i];
+    else if (a === "--models" && argv[i + 1]) {
+      models = (argv[++i] ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else if (a === "--base-url" && argv[i + 1]) baseUrl = argv[++i];
+    else if (a === "--api-key" && argv[i + 1]) apiKey = argv[++i];
   }
-  return { variant, dryRun };
+  return { variant, dryRun, model, models, baseUrl, apiKey };
 }
 
 function formatEntries(parsed: ParsedFinance | null): string {
@@ -384,13 +388,14 @@ function buildMarkdownReport(
   variantSummaries: VariantSummary[],
   ctx: PromptContext,
   runAt: string,
+  modelCount: number,
 ): string {
-  const totalCells = RETEST_SCENARIOS.length * TOP_5_MODELS.length;
+  const totalCells = RETEST_SCENARIOS.length * modelCount;
   const lines: string[] = [
     `# Finance Parse Prompt Tune — ${runAt}`,
     "",
-    "Retests **4 hard-25 failure scenarios** × **5 models** × **prompt variants**.",
-    "Goal: find legitimate prompt improvements (not benchmark hacks) for 20/20 strict pass.",
+    `Retests **4 hard-25 failure scenarios** × **${modelCount} model(s)** × **prompt variants**.`,
+    "Goal: find legitimate prompt improvements (not benchmark hacks) for strict pass.",
     "",
     `**Anchor time used:** ${ctx.dateLabel}, ${ctx.timeLabel} WIB`,
     "",
@@ -455,7 +460,29 @@ function buildMarkdownReport(
 }
 
 async function main() {
-  const { variant: singleVariant, dryRun } = parseArgs(process.argv);
+  const {
+    variant: singleVariant,
+    dryRun,
+    model,
+    models: modelsArg,
+    baseUrl,
+    apiKey,
+  } = parseArgs(process.argv);
+  applyLlmConfigOverrides({ baseUrl, apiKey });
+
+  const evalModels = modelsArg?.length
+    ? modelsArg
+    : model
+      ? [model]
+      : process.env.EVAL_MODEL?.trim()
+        ? [process.env.EVAL_MODEL.trim()]
+        : [];
+  if (!evalModels.length) {
+    throw new Error(
+      "Pass --model <lm-studio-id> or --models a,b (or set EVAL_MODEL)",
+    );
+  }
+
   const ctx = buildPromptContext();
   const variants = singleVariant
     ? PROMPT_VARIANTS.filter((v) => v.id === singleVariant)
@@ -468,12 +495,13 @@ async function main() {
   }
 
   const runAt = new Date().toISOString();
-  const totalCells = RETEST_SCENARIOS.length * TOP_5_MODELS.length;
+  const totalCells = RETEST_SCENARIOS.length * evalModels.length;
 
   console.log(`Finance Parse PROMPT TUNE — ${runAt}`);
+  console.log(`Base URL: ${getLlmConfig().baseURL}`);
   console.log(`Anchor: ${ctx.dateLabel}, ${ctx.timeLabel} WIB`);
   console.log(`Scenarios: ${RETEST_SCENARIOS.length} (hard-25 failures only)`);
-  console.log(`Models: ${TOP_5_MODELS.length}`);
+  console.log(`Models: ${evalModels.join(", ")}`);
   console.log(`Variants: ${variants.map((v) => v.id).join(", ")}\n`);
 
   if (dryRun) {
@@ -502,7 +530,7 @@ async function main() {
     console.log(`VARIANT: ${variant.id} — ${variant.description}`);
     console.log("=".repeat(72));
 
-    for (const modelId of TOP_5_MODELS) {
+    for (const modelId of evalModels) {
       for (const scenario of RETEST_SCENARIOS) {
         const cellKey = `${scenario.id}::${modelId}`;
         const wasKnownFailure = knownFailureCells.has(cellKey);
@@ -560,7 +588,7 @@ async function main() {
   const variantSummaries: VariantSummary[] = variants.map((v) => {
     const rows = results.filter((r) => r.variantId === v.id);
     const perModel: Record<string, { pass: number; total: number }> = {};
-    for (const m of TOP_5_MODELS) {
+    for (const m of evalModels) {
       const mr = rows.filter((r) => r.modelId === m);
       perModel[m] = { pass: mr.filter((r) => r.pass).length, total: mr.length };
     }
@@ -601,7 +629,10 @@ async function main() {
   };
 
   writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
-  writeFileSync(mdPath, buildMarkdownReport(results, variantSummaries, ctx, runAt));
+  writeFileSync(
+    mdPath,
+    buildMarkdownReport(results, variantSummaries, ctx, runAt, evalModels.length),
+  );
 
   console.log(`\nJSON: ${jsonPath}`);
   console.log(`Analysis: ${mdPath}`);

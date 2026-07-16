@@ -18,21 +18,44 @@ import {
 } from "../src/agentic/sandbox";
 import { createAgenticTools } from "../src/agentic/tools";
 import { createFinanceAgent } from "../src/agentic/agent";
-import { scoreStepQuality, scoreRubric, JUDGE_MODEL_ID, JUDGE_PROVIDER } from "../src/agentic/judge";
+import { scoreStepQuality, scoreRubric, JUDGE_MODEL_ID } from "../src/agentic/judge";
 import type { LedgerRow, ToolCallRecord, TurnTrace } from "../src/agentic/types";
 import { existsSync } from "node:fs";
 
 config({ path: resolve(import.meta.dirname, "../.env") });
 
 const MODELS = [
-  "google/gemma-4-31b-it",
-  "google/gemini-3.1-flash-lite",
-  "z-ai/glm-4.7",
-  "qwen/qwen3.6-35b-a3b",
-  "openai/gpt-oss-120b",
+  process.env.EVAL_MODEL?.trim() || process.env.STUDIO_MODEL?.trim() || "local-model",
 ];
 
 const JUDGE_REPEATS = 5;
+
+/** The subset of a tool result this harness actually inspects. */
+type ToolOutcome = { ok?: boolean; error?: string; refused?: boolean };
+
+/**
+ * Narrow an unknown tool result down to the fields this harness checks.
+ *
+ * Why this exists: in @mastra/core 1.50.1 a tool's execute signature is
+ *   `execute?: (inputData: TSchemaIn, context: TContext) => Promise<TSchemaOut | ValidationError | void>`
+ * and `createTool` binds `TSchemaOut = InferSchema<TOutputSchema>`. The execute function's own
+ * return type is not a type parameter, so it is never inferred from the implementation. Our tools
+ * in src/agentic/tools/index.ts declare no `outputSchema`, so `TOutputSchema` falls back to
+ * `undefined` and `InferSchema<undefined>` resolves to `unknown` — erasing the concrete
+ * `{ ok, error, refused, ... }` object each tool really returns. Adding an `outputSchema` there
+ * would fix the types but would also switch on Mastra's runtime output validation, so the erasure
+ * is narrowed back here instead: one runtime-checked boundary rather than 11 call-site casts.
+ */
+function readToolOutcome(out: unknown): ToolOutcome {
+  if (typeof out !== "object" || out === null) return {};
+  // Safe after the object check above: reading unknown keys off a non-null object.
+  const rec = out as Record<string, unknown>;
+  return {
+    ok: typeof rec.ok === "boolean" ? rec.ok : undefined,
+    error: typeof rec.error === "string" ? rec.error : undefined,
+    refused: typeof rec.refused === "boolean" ? rec.refused : undefined,
+  };
+}
 
 async function testTools() {
   console.log("\n=== 1) TOOL SMOKE ===");
@@ -47,7 +70,9 @@ async function testTools() {
   const ctx = { toolCallId: "v", messages: [], suspend: async () => {} } as never;
   const rows: Array<{ tool: string; ok: boolean; note: string }> = [];
 
-  const cases: Array<[string, () => Promise<{ ok?: boolean; error?: string; refused?: boolean }>]> = [
+  // Tool execute() is typed Promise<unknown> by Mastra (see readToolOutcome); the loop below
+  // narrows each result once via readToolOutcome rather than asserting a shape per case.
+  const cases: Array<[string, () => Promise<unknown>]> = [
     [
       "list_inbox",
       () => tools.list_inbox.execute!({}, ctx),
@@ -55,7 +80,9 @@ async function testTools() {
     [
       "firecrawl_search_refuse_nota",
       async () => {
-        const out = await tools.firecrawl_search.execute!({ query: "cari nota Indomaret", limit: 1 }, ctx);
+        const out = readToolOutcome(
+          await tools.firecrawl_search.execute!({ query: "cari nota Indomaret", limit: 1 }, ctx),
+        );
         // Pass if tool correctly refuses receipt-hunting
         return { ok: out.ok === false && out.refused === true, error: out.error };
       },
@@ -114,9 +141,11 @@ async function testTools() {
   for (const [name, fn] of cases) {
     try {
       const out = await fn();
-      const ok = out?.ok !== false;
-      rows.push({ tool: name, ok, note: ok ? "pass" : String(out?.error ?? out) });
-      console.log(`  ${ok ? "PASS" : "FAIL"} ${name}${ok ? "" : ` — ${out?.error}`}`);
+      // `out` is kept raw for the String(...) fallback below so the note text is unchanged.
+      const outcome = readToolOutcome(out);
+      const ok = outcome.ok !== false;
+      rows.push({ tool: name, ok, note: ok ? "pass" : String(outcome.error ?? out) });
+      console.log(`  ${ok ? "PASS" : "FAIL"} ${name}${ok ? "" : ` — ${outcome.error}`}`);
     } catch (e) {
       rows.push({ tool: name, ok: false, note: String(e) });
       console.log(`  FAIL ${name} — ${e}`);
@@ -219,13 +248,19 @@ function goldenJudgeInput(): {
       ms: 1000,
     },
   ];
+  // Must mirror the row the sqlite_exec INSERT above actually produces, since the real suite
+  // feeds the judge `SELECT * FROM ledger` rows (asserts.ts readLedger). Verified against the
+  // live schema in sandbox.ts: the INSERT names neither org_id nor tanggal, so org_id takes its
+  // column default 'personal' (TEXT NOT NULL DEFAULT 'personal') and tanggal stays NULL.
   const ledger: LedgerRow[] = [
     {
       id: 1,
+      org_id: "personal",
       type: "pengeluaran",
       jumlah: 35000,
       deskripsi: "ojek",
       tanggal_hint: "hari_ini",
+      tanggal: null,
       vendor: null,
       source: null,
       ambigu: 0,
@@ -245,7 +280,7 @@ function goldenJudgeInput(): {
 
 async function testJudgeStability() {
   console.log(`\n=== 3) JUDGE STABILITY (${JUDGE_REPEATS}× same transcript) ===`);
-  console.log(`  Judge: ${JUDGE_MODEL_ID} @ ${JUDGE_PROVIDER}`);
+  console.log(`  Judge: ${JUDGE_MODEL_ID}`);
   const golden = goldenJudgeInput();
   const stepScores: number[] = [];
   const rubricScores: number[] = [];

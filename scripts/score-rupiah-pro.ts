@@ -10,8 +10,8 @@
  *   bun run score:rupiah-pro
  *   bun run score:rupiah-pro -- --suite all
  */
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from "node:fs";
+import { resolve, join } from "node:path";
 
 export const BENCH_NAME = "Rupiah-Pro";
 export const BENCH_VERSION = "1.0.0";
@@ -37,48 +37,28 @@ type SuiteResult = {
   }>;
 };
 
-/** Canonical valid reports for the public leaderboard (skip gpt-oss / hy3). */
-const REPORTS: Array<{ label: string; path: string }> = [
-  {
-    label: "google/gemma-4-31b-it",
-    path: "docs/results/agentic/2026-07-09-13-34-45-agentic-suite.json",
-  },
-  {
-    label: "deepseek/deepseek-v4-flash",
-    path: "docs/results/agentic/2026-07-09-13-30-45-agentic-suite.json",
-  },
-  {
-    label: "xiaomi/mimo-v2.5-pro",
-    path: "docs/results/agentic/2026-07-09-14-02-36-agentic-suite.json",
-  },
-  // Culled from public Rupiah-Pro board: ~Rp 23/req outlier; keeps cost charts readable.
-  // Trace retained: docs/results/agentic/2026-07-09-13-56-36-agentic-suite.json
-  {
-    label: "z-ai/glm-4.7",
-    path: "docs/results/agentic/2026-07-09-13-58-21-agentic-suite.json",
-  },
-  {
-    label: "deepseek/deepseek-v4-pro",
-    path: "docs/results/agentic/2026-07-09-13-57-23-agentic-suite.json",
-  },
-  {
-    label: "qwen/qwen3.6-35b-a3b",
-    // AkashML/fp8 + det0 (temp=0) — best of 2026-07-12 provider/config matrix (84.6 vs prior 62.2)
-    path: "docs/results/agentic/2026-07-12-07-08-30-agentic-suite.json",
-  },
-  {
-    label: "google/gemini-3.1-flash-lite",
-    path: "docs/results/agentic/2026-07-09-22-36-58-agentic-suite.json",
-  },
-  {
-    label: "z-ai/glm-4.5",
-    path: "docs/results/agentic/2026-07-09-22-38-44-agentic-suite.json",
-  },
-  {
-    label: "inclusionai/ling-2.6-1t",
-    path: "docs/results/agentic/2026-07-09-22-38-30-agentic-suite.json",
-  },
-];
+/** Discover local agentic suite JSON traces (newest first per modelId). */
+function discoverSuiteReports(): Array<{ label: string; path: string }> {
+  const dir = resolve(import.meta.dirname, "../docs/results/agentic");
+  if (!existsSync(dir)) return [];
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith("-agentic-suite.json"))
+    .map((f) => join(dir, f))
+    .sort()
+    .reverse();
+  const byModel = new Map<string, string>();
+  for (const path of files) {
+    try {
+      const data = JSON.parse(readFileSync(path, "utf8")) as SuiteResult;
+      const modelId = data.summary?.modelId;
+      if (!modelId || byModel.has(modelId)) continue;
+      byModel.set(modelId, path);
+    } catch {
+      /* skip malformed */
+    }
+  }
+  return [...byModel.entries()].map(([label, path]) => ({ label, path }));
+}
 
 /** Public v1 headline set — scenarios that still separate models. */
 export const DISCRIMINATIVE_IDS = [
@@ -184,7 +164,14 @@ function main() {
     }>;
   }> = [];
 
-  for (const rep of REPORTS) {
+  const reports = discoverSuiteReports();
+  if (!reports.length) {
+    console.warn(
+      "No *-agentic-suite.json found under docs/results/agentic. Run eval:agentic first.",
+    );
+  }
+
+  for (const rep of reports) {
     if (!existsSync(resolve(rep.path))) {
       console.warn(`skip missing ${rep.path}`);
       continue;
@@ -228,6 +215,13 @@ function main() {
   }
 
   models.sort((a, b) => b.avg - a.avg);
+
+  if (models.length === 0) {
+    console.log(
+      `No local *-agentic-suite.json traces under docs/results/agentic — skip leaderboard write.`,
+    );
+    return;
+  }
 
   const avgs = models.map((m) => m.avg);
   const spread = Math.max(...avgs) - Math.min(...avgs);
@@ -286,7 +280,6 @@ function main() {
     `- Headline suite: **${DISCRIMINATIVE_IDS.length} discriminative scenarios**`,
     `- Rubric + step collected at run time for audit, **not** in the public average`,
     `- Offline rescore from existing traces — no re-run required`,
-    `- Culled from public board: \`google/gemini-3-flash-preview\` (unit-price outlier ~Rp 23/req)`,
     ``,
     `## Leaderboard`,
     ``,

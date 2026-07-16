@@ -11,6 +11,7 @@ import {
   type Sandbox,
 } from "../sandbox";
 import type { SqlDb } from "../sqlite";
+import { chatCompletionsUrl, getLlmConfig } from "../../core/llm-client";
 
 const FIRECRAWL_BASE = "https://api.firecrawl.dev/v1";
 
@@ -72,43 +73,66 @@ async function visionOcrFromDataUrl(
   sandbox: Sandbox,
   label: string,
 ): Promise<Record<string, unknown> | null> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return null;
-  try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const { apiKey } = getLlmConfig();
+  const ocrModel =
+    process.env.OCR_MODEL?.trim() ||
+    process.env.JUDGE_MODEL?.trim() ||
+    process.env.EVAL_MODEL?.trim() ||
+    "local-model";
+
+  const messages = [
+    {
+      role: "user" as const,
+      content: [
+        {
+          type: "text" as const,
+          text: 'Extract Indonesian receipt JSON: {"vendor":string|null,"total":number|null,"tanggal":string|null,"items":[{"name":string,"jumlah":number}]}. Rupiah integers only (87500 not 87.500). JSON only.',
+        },
+        { type: "image_url" as const, image_url: { url: dataUrl } },
+      ],
+    },
+  ];
+
+  async function callOnce(jsonObject: boolean): Promise<string> {
+    const body: Record<string, unknown> = {
+      model: ocrModel,
+      temperature: 0,
+      messages,
+      max_tokens: 512,
+    };
+    if (jsonObject) body.response_format = { type: "json_object" };
+
+    const res = await fetch(chatCompletionsUrl(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/volfadar/chat-keuangan-bench",
-        "X-Title": "chat-keuangan-bench-ocr",
       },
-      body: JSON.stringify({
-        model: "google/gemma-4-31b-it",
-        temperature: 0,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: 'Extract Indonesian receipt JSON: {"vendor":string|null,"total":number|null,"tanggal":string|null,"items":[{"name":string,"jumlah":number}]}. Rupiah integers only (87500 not 87.500). JSON only.',
-              },
-              { type: "image_url", image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 512,
-      }),
+      body: JSON.stringify(body),
     });
     const payload = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
+      error?: { message?: string };
     };
-    const content = payload.choices?.[0]?.message?.content;
-    if (content) {
-      return { ...JSON.parse(content), source: "vision", imageRef: label };
+    if (!res.ok) {
+      throw new Error(
+        `OCR HTTP ${res.status}: ${payload.error?.message ?? res.statusText}`,
+      );
     }
+    const content = payload.choices?.[0]?.message?.content;
+    if (!content) throw new Error("OCR returned empty content");
+    return content;
+  }
+
+  try {
+    let content: string;
+    try {
+      content = await callOnce(true);
+    } catch {
+      // Many LM Studio / local servers reject response_format=json_object.
+      content = await callOnce(false);
+    }
+    return { ...JSON.parse(content), source: "vision", imageRef: label };
   } catch (err) {
     recordTool(sandbox, "receipt_ocr_vision_error", { imageRef: label }, String(err));
   }

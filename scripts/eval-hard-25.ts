@@ -6,12 +6,12 @@
  * decimals, money slang (ceban/goceng), spelled amounts, future intent vs past, refund
  * income, discount net price, cancelled purchase, per-kg qty, emoji/WA noise, 5-item rekap.
  *
- * Runs all 12 models in the canonical roster (see src/core/model-roster.ts).
+ * Multi-model runs require --models (roster is empty for local-first).
  *
  * Run:
- *   bun run apps/ai/scripts/eval-finance-hard-25.ts
- *   bun run apps/ai/scripts/eval-finance-hard-25.ts --model google/gemma-4-31b-it
- *   bun run apps/ai/scripts/eval-finance-hard-25.ts --dry-run
+ *   bun run eval:hard-25 -- --models model-a,model-b
+ *   bun run eval:single -- --model <lm-studio-id>
+ *   bun run eval:hard-25 -- --dry-run
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -25,6 +25,10 @@ import {
   type Scenario,
 } from "../src/core/eval-core.ts";
 import { ALL_EVAL_MODELS } from "../src/core/model-roster.ts";
+import {
+  applyLlmConfigOverrides,
+  getLlmConfig,
+} from "../src/core/llm-client.ts";
 
 export { ALL_EVAL_MODELS };
 
@@ -757,6 +761,8 @@ function parseArgs(argv: string[]) {
   let model: string | undefined;
   let models: string[] | undefined;
   let dryRun = false;
+  let baseUrl: string | undefined;
+  let apiKey: string | undefined;
   const mergeFrom: string[] = [];
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -768,11 +774,15 @@ function parseArgs(argv: string[]) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+    } else if (a === "--base-url" && argv[i + 1]) {
+      baseUrl = argv[++i];
+    } else if (a === "--api-key" && argv[i + 1]) {
+      apiKey = argv[++i];
     } else if (a === "--merge-from" && argv[i + 1]) {
       mergeFrom.push(resolve(argv[++i]!));
     }
   }
-  return { model, models, dryRun, mergeFrom };
+  return { model, models, dryRun, mergeFrom, baseUrl, apiKey };
 }
 
 function mergeResultRows(
@@ -797,11 +807,11 @@ function buildMarkdownReport(
   const lines: string[] = [
     `# Finance Parse Hard-25 Eval — ${runAt}`,
     "",
-    `25 extreme-but-realistic scenarios (12 rewrites + 13 new angles) × ${ALL_EVAL_MODELS.length} models.`,
+    `25 extreme-but-realistic scenarios (12 rewrites + 13 new angles) × ${ranked.length} models.`,
     "",
-    "## Models (full eval roster)",
+    "## Models (this run)",
     "",
-    ALL_EVAL_MODELS.map((m) => `- \`${m}\``).join("\n"),
+    ranked.map((s) => `- \`${s.modelId}\``).join("\n"),
     "",
     "## Recommendation",
     "",
@@ -889,15 +899,24 @@ function buildMarkdownReport(
 }
 
 async function main() {
-  const { model: singleModel, models: modelsArg, dryRun, mergeFrom } = parseArgs(process.argv);
+  const { model: singleModel, models: modelsArg, dryRun, mergeFrom, baseUrl, apiKey } =
+    parseArgs(process.argv);
+  applyLlmConfigOverrides({ baseUrl, apiKey });
   const models = singleModel
     ? [singleModel]
     : modelsArg?.length
       ? modelsArg
       : [...ALL_EVAL_MODELS];
+  if (!models.length) {
+    throw new Error(
+      "No models to eval. Pass --model <lm-studio-id> or --models a,b (ALL_EVAL_MODELS is empty by default).",
+    );
+  }
   const runAt = new Date().toISOString();
+  const { baseURL } = getLlmConfig();
 
   console.log(`Finance Parse HARD-25 eval — ${runAt}`);
+  console.log(`Base URL: ${baseURL}`);
   console.log(`Scenarios: ${HARD_SCENARIOS.length} (${HARD_SCENARIOS.filter((s) => s.group === "rewrite").length} rewrites + ${HARD_SCENARIOS.filter((s) => s.group === "new").length} new)`);
   console.log(`Models: ${models.join(", ")}\n`);
 
@@ -1025,7 +1044,7 @@ async function main() {
     );
   }
 
-  const logDir = resolve(import.meta.dirname, "../../../docs/research/logs");
+  const logDir = resolve(import.meta.dirname, "../docs/results/runs");
   mkdirSync(logDir, { recursive: true });
   const dateSlug = runAt.slice(0, 10);
   const jsonPath = resolve(logDir, `${dateSlug}-finance-hard-25-results.json`);
@@ -1035,6 +1054,7 @@ async function main() {
 
   const payload = {
     runAt,
+    baseURL: getLlmConfig().baseURL,
     models: allModels,
     scenarios: HARD_SCENARIOS.map((s) => ({
       id: s.id,

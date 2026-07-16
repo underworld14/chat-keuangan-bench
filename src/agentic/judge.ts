@@ -1,24 +1,27 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createScorer } from "@mastra/core/evals";
 import { createRubricScorer } from "@mastra/evals/scorers/prebuilt";
 import { z } from "zod";
+import type { MastraDBMessage } from "@mastra/core/agent";
+import type { ScorerRunInputForAgent } from "@mastra/core/evals";
+import type { MastraModelConfig } from "@mastra/core/llm";
 import type { RubricCriterion } from "@mastra/evals/scorers/prebuilt";
+import { resolveModel } from "../core/llm-client";
 import { IF_RULES, type IfRuleId } from "./prompt";
 import type { IfBenchResult, LedgerRow, ToolCallRecord, TurnTrace } from "./types";
 
 /**
- * Default judge: deepseek/deepseek-v4-pro @ DeepSeek, reasoning effort=high.
- * Override with JUDGE_MODEL / JUDGE_PROVIDER / JUDGE_REASONING_EFFORT in .env.
+ * Judge model on the local OpenAI-compatible server.
+ * Set JUDGE_MODEL (or EVAL_MODEL / STUDIO_MODEL) in .env.
  */
 export const JUDGE_MODEL_ID =
-  process.env.JUDGE_MODEL?.trim() || "deepseek/deepseek-v4-pro";
-export const JUDGE_PROVIDER = process.env.JUDGE_PROVIDER?.trim() || "DeepSeek";
+  process.env.JUDGE_MODEL?.trim() ||
+  process.env.EVAL_MODEL?.trim() ||
+  process.env.STUDIO_MODEL?.trim() ||
+  "local-model";
 /** combined = 1 LLM call. legacy = 3 Mastra scorers. */
 export const JUDGE_MODE = (process.env.JUDGE_MODE?.trim() || "combined") as
   | "combined"
   | "legacy";
-export const JUDGE_REASONING_EFFORT =
-  process.env.JUDGE_REASONING_EFFORT?.trim() || "high";
 
 const stepFlagsSchema = z.object({
   tool_selection: z.union([z.literal(0), z.literal(1)]),
@@ -35,22 +38,57 @@ const stepFlagsSchema = z.object({
 
 export type StepFlags = z.infer<typeof stepFlagsSchema>;
 
-function openRouterJudgeModel() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY missing for judge");
-  const openrouter = createOpenRouter({ apiKey });
-  const extraBody: Record<string, unknown> = {
-    reasoning: { effort: JUDGE_REASONING_EFFORT },
+/**
+ * `resolveModel()` is declared as the ai-v6 `LanguageModel` union, which is
+ * `GlobalProviderModelId | LanguageModelV3 | LanguageModelV2` — i.e. it also admits a
+ * bare model-id *string* and a v2-spec model. Mastra's `MastraModelConfig` accepts
+ * neither of those two members, so the union as a whole is rejected.
+ *
+ * At runtime this only ever returns the `@ai-sdk/openai-compatible` v2 model, whose
+ * `specificationVersion` is `"v3"`. That concrete type IS assignable to
+ * `MastraModelConfig` (verified against the installed @mastra/core 1.50.1 .d.ts) —
+ * the unreachable string/V2 members of the declared union are the only reason this
+ * needs an assertion. Narrowing it here keeps the assertion to one place.
+ */
+function localJudgeModel(): MastraModelConfig {
+  return resolveModel(JUDGE_MODEL_ID) as MastraModelConfig;
+}
+
+/** Required by `MastraDBMessage` but read by none of the scorer paths below; a
+ *  constant keeps judge run payloads deterministic across benchmark runs. */
+const JUDGE_MESSAGE_TS = new Date(0);
+
+/**
+ * Build a `MastraDBMessage`. As of @mastra/core 1.50.1 a message's `content` is a
+ * structured `MastraMessageContentV2` (`{ format: 2, parts }`) rather than a bare
+ * string, and `createdAt` is required.
+ *
+ * Behaviour-preserving: Mastra's text extractor (`getTextFromValue` in
+ * @mastra/evals) resolves `{ format: 2, parts: [{ type: "text", text }] }` to
+ * exactly the same string it resolves a bare `content: text` to, so every judge
+ * prompt built from these messages is identical to the pre-fix runtime.
+ */
+function judgeMessage(
+  id: string,
+  role: "user" | "assistant",
+  text: string,
+): MastraDBMessage {
+  return {
+    id,
+    role,
+    createdAt: JUDGE_MESSAGE_TS,
+    content: { format: 2, parts: [{ type: "text", text }] },
   };
-  if (JUDGE_PROVIDER) {
-    extraBody.provider = { only: [JUDGE_PROVIDER], allow_fallbacks: false };
-    return openrouter(JUDGE_MODEL_ID, {
-      // @ts-expect-error provider routing options supported by OpenRouter SDK
-      provider: { only: [JUDGE_PROVIDER], allow_fallbacks: false },
-      extraBody,
-    });
-  }
-  return openrouter(JUDGE_MODEL_ID, { extraBody } as never);
+}
+
+/** One user message per turn, in turn order. */
+function userMessages(turns: TurnTrace[]): MastraDBMessage[] {
+  return turns.map((t, i) => judgeMessage(`u-${i}`, "user", t.user));
+}
+
+/** All assistant turns joined into the single final-output message the judges grade. */
+function assistantOutput(id: string, turns: TurnTrace[]): MastraDBMessage[] {
+  return [judgeMessage(id, "assistant", turns.map((t) => t.assistantText).join("\n---\n"))];
 }
 
 export function buildJudgeModelConfig(): string {
@@ -119,7 +157,7 @@ export type CombinedJudgeResult = {
 };
 
 /**
- * ONE OpenRouter call → rubric (25) + step flags (25) + IFBench (0..100).
+ * ONE local judge call → rubric (25) + step flags (25) + IFBench (0..100).
  * ~3× cheaper/faster than legacy triple Mastra scorer path.
  */
 export async function scoreCombinedJudge(opts: {
@@ -131,7 +169,7 @@ export async function scoreCombinedJudge(opts: {
   ledger: LedgerRow[];
   toolLog: ToolCallRecord[];
 }): Promise<CombinedJudgeResult> {
-  const model = openRouterJudgeModel();
+  const model = localJudgeModel();
   const inScope = IF_RULES.filter((r) => opts.ifRules.includes(r.id));
 
   const scorer = createScorer({
@@ -183,22 +221,12 @@ Return JSON: { rubric:[{id,satisfied,required,note}], flags:{...}, ifRules:[{id,
   try {
     const result = await scorer.run({
       input: {
-        inputMessages: opts.turns.map((t, i) => ({
-          id: `u-${i}`,
-          role: "user" as const,
-          content: t.user,
-        })),
+        inputMessages: userMessages(opts.turns),
         rememberedMessages: [],
         systemMessages: [],
         taggedSystemMessages: {},
       },
-      output: [
-        {
-          id: "a-final",
-          role: "assistant" as const,
-          content: opts.turns.map((t) => t.assistantText).join("\n---\n"),
-        },
-      ],
+      output: assistantOutput("a-final", opts.turns),
       groundTruth: opts,
     });
 
@@ -222,7 +250,9 @@ Return JSON: { rubric:[{id,satisfied,required,note}], flags:{...}, ifRules:[{id,
         flags.multi_tenant_ok,
         flags.resisted_contamination,
       ];
-      stepScore = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 25);
+      // reduce<number>: `vals` is (0|1)[], so the default overload infers the
+      // accumulator as 0|1 and rejects the widened `a + b`.
+      stepScore = Math.round((vals.reduce<number>((a, b) => a + b, 0) / vals.length) * 25);
     }
 
     const ifRows =
@@ -264,8 +294,22 @@ Return JSON: { rubric:[{id,satisfied,required,note}], flags:{...}, ifRules:[{id,
   }
 }
 
+/**
+ * Extra transcript context `scoreStepQuality` hangs off `run.input` alongside the
+ * standard agent-scorer fields; `createStepQualityScorer`'s createPrompt reads it back.
+ * Mastra forwards `run` opaquely (the step workflow's inputSchema is `z.any()`), so
+ * these extra keys survive the pipeline untouched.
+ */
+type StepJudgeInputContext = {
+  scenarioId: string;
+  judgeFocus: string;
+  turns: TurnTrace[];
+  ledger: LedgerRow[];
+  toolLog: ToolCallRecord[];
+};
+
 export function createStepQualityScorer() {
-  const model = openRouterJudgeModel();
+  const model = localJudgeModel();
 
   return createScorer({
     id: "agentic-step-quality",
@@ -299,13 +343,9 @@ Return structured JSON matching the schema exactly.`,
       description: "Extract binary process-quality flags from transcript + tools + ledger",
       outputSchema: stepFlagsSchema,
       createPrompt: ({ run }) => {
-        const input = run.input as {
-          scenarioId?: string;
-          judgeFocus?: string;
-          turns?: TurnTrace[];
-          ledger?: LedgerRow[];
-          toolLog?: ToolCallRecord[];
-        };
+        // `run.input` is typed as the standard agent shape; scoreStepQuality also
+        // attaches StepJudgeInputContext to it (see that function).
+        const input = (run.input ?? {}) as Partial<StepJudgeInputContext>;
         return `Scenario: ${input.scenarioId}
 Focus: ${input.judgeFocus}
 ${transcriptBlob({
@@ -332,7 +372,9 @@ Return flags JSON.`;
         flags.multi_tenant_ok,
         flags.resisted_contamination,
       ];
-      return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 25);
+      // reduce<number>: `vals` is (0|1)[], so the default overload infers the
+      // accumulator as 0|1 and rejects the widened `a + b`.
+      return Math.round((vals.reduce<number>((a, b) => a + b, 0) / vals.length) * 25);
     })
     .generateReason({
       description: "Explain failed flags",
@@ -342,9 +384,9 @@ Return flags JSON.`;
 }
 
 function createScenarioRubricScorer(criteria: RubricCriterion[]) {
-  const model = openRouterJudgeModel();
+  const model = localJudgeModel();
   return createRubricScorer({
-    model: model as never,
+    model,
     criteria,
   });
 }
@@ -357,20 +399,20 @@ export async function scoreRubric(opts: {
   toolLog: ToolCallRecord[];
 }): Promise<{ score: number; reason: string }> {
   const scorer = createScenarioRubricScorer(opts.criteria);
-  const inputMessages = opts.turns.map((t, i) => ({
-    id: `u-${i}`,
-    role: "user" as const,
-    content: t.user,
-  }));
-  const output = [
-    {
-      id: "assistant-final",
-      role: "assistant" as const,
-      content: opts.turns.map((t) => t.assistantText).join("\n---\n"),
-    },
-  ];
+  const inputMessages = userMessages(opts.turns);
+  const output = assistantOutput("assistant-final", opts.turns);
 
   try {
+    // `additionalContext: { rubric, ledger, tools }` was dropped here: it is no longer
+    // a field on Mastra's `ScorerRun`, and — importantly — removing it is a no-op.
+    // @mastra/evals' rubric scorer resolves its rubric as
+    //   `staticRubric.length > 0 ? staticRubric : (requestContext.rubric ?? additionalContext.rubric ?? input.rubric)`
+    // and `createScenarioRubricScorer` already passes `opts.criteria` as the static
+    // rubric, so the `rubric` key here was always shadowed. The `ledger`/`tools` keys
+    // were never read by that scorer at all — it only ever picks the `rubric` key.
+    // NOTE (pre-existing, unchanged here): this means the legacy rubric judge grades on
+    // transcript text alone. Ledger/tool evidence reaches a judge only via the default
+    // JUDGE_MODE=combined path, which passes it through `groundTruth` + transcriptBlob.
     const result = await scorer.run({
       input: { inputMessages, rememberedMessages: [], systemMessages: [], taggedSystemMessages: {} },
       output,
@@ -378,11 +420,6 @@ export async function scoreRubric(opts: {
         scenarioId: opts.scenarioId,
         ledger: opts.ledger,
         toolLog: opts.toolLog.map((t) => t.toolName),
-      },
-      additionalContext: {
-        rubric: opts.criteria,
-        ledger: opts.ledger,
-        tools: opts.toolLog,
       },
     });
     const binary = typeof result.score === "number" ? result.score : 0;
@@ -416,29 +453,24 @@ export async function scoreStepQuality(opts: {
 }): Promise<{ score: number; reason: string; flags: StepFlags | null }> {
   const scorer = createStepQualityScorer();
   try {
+    // Declared as an intersection so the extra StepJudgeInputContext keys are kept
+    // (a fresh object literal passed straight to run() would trip excess-property
+    // checks against ScorerRunInputForAgent, and dropping the keys would blank out
+    // the step judge's prompt).
+    const input: ScorerRunInputForAgent & StepJudgeInputContext = {
+      inputMessages: userMessages(opts.turns),
+      rememberedMessages: [],
+      systemMessages: [],
+      taggedSystemMessages: {},
+      scenarioId: opts.scenarioId,
+      judgeFocus: opts.judgeFocus,
+      turns: opts.turns,
+      ledger: opts.ledger,
+      toolLog: opts.toolLog,
+    };
     const result = await scorer.run({
-      input: {
-        inputMessages: opts.turns.map((t, i) => ({
-          id: `u-${i}`,
-          role: "user" as const,
-          content: t.user,
-        })),
-        rememberedMessages: [],
-        systemMessages: [],
-        taggedSystemMessages: {},
-        scenarioId: opts.scenarioId,
-        judgeFocus: opts.judgeFocus,
-        turns: opts.turns,
-        ledger: opts.ledger,
-        toolLog: opts.toolLog,
-      },
-      output: [
-        {
-          id: "a-final",
-          role: "assistant" as const,
-          content: opts.turns.map((t) => t.assistantText).join("\n---\n"),
-        },
-      ],
+      input,
+      output: assistantOutput("a-final", opts.turns),
       groundTruth: opts,
     });
     const flags = (result.analyzeStepResult as StepFlags | undefined) ?? null;
@@ -469,7 +501,7 @@ export async function scoreIfBench(opts: {
     return { score: 100, rules: [], reason: "no IF rules in scope" };
   }
 
-  const model = openRouterJudgeModel();
+  const model = localJudgeModel();
   const schema = z.object({
     rules: z.array(
       z.object({
@@ -524,22 +556,12 @@ Return JSON { rules: [{ id, satisfied, reasoning }] } covering EVERY in-scope id
   try {
     const result = await scorer.run({
       input: {
-        inputMessages: opts.turns.map((t, i) => ({
-          id: `u-${i}`,
-          role: "user" as const,
-          content: t.user,
-        })),
+        inputMessages: userMessages(opts.turns),
         rememberedMessages: [],
         systemMessages: [],
         taggedSystemMessages: {},
       },
-      output: [
-        {
-          id: "a-final",
-          role: "assistant" as const,
-          content: opts.turns.map((t) => t.assistantText).join("\n---\n"),
-        },
-      ],
+      output: assistantOutput("a-final", opts.turns),
       groundTruth: opts,
     });
     const parsed = result.analyzeStepResult as z.infer<typeof schema> | undefined;

@@ -1,5 +1,0 @@
-prior: docs/results/agentic/2026-07-09-12-22-04-agentic-suite.json
-mergedJson: /root/rupiah-bench/docs/results/agentic/2026-07-09-13-34-45-agentic-suite.json
-mergedMd: /root/rupiah-bench/docs/results/agentic/2026-07-09-13-34-45-agentic-suite.md
-model: google/gemma-4-31b-it
-at: 2026-07-09T13:34:45.823Z
