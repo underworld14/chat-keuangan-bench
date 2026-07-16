@@ -907,7 +907,9 @@ async function main() {
     : modelsArg?.length
       ? modelsArg
       : [...ALL_EVAL_MODELS];
-  if (!models.length) {
+  // Checked below the dry-run branch: --dry-run only prints scenarios, so it must work
+  // before any model is wired up.
+  if (!dryRun && !models.length) {
     throw new Error(
       "No models to eval. Pass --model <lm-studio-id> or --models a,b (ALL_EVAL_MODELS is empty by default).",
     );

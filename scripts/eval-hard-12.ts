@@ -570,9 +570,9 @@ function buildMarkdownReport(
   const lines: string[] = [
     `# Finance Parse Hard-12 Eval — ${runAt}`,
     "",
-    "## Models",
+    "## Models (this run)",
     "",
-    HARD_12_MODELS.map((m) => `- \`${m}\``).join("\n"),
+    summaries.map((s) => `- \`${s.modelId}\``).join("\n"),
     "",
     "## Scoreboard",
     "",
@@ -640,7 +640,8 @@ async function main() {
   const { model: singleModel, dryRun, baseUrl, apiKey } = parseArgs(process.argv);
   applyLlmConfigOverrides({ baseUrl, apiKey });
   const models = singleModel ? [singleModel] : [...HARD_12_MODELS];
-  if (!models.length) {
+  // Below the dry-run branch: --dry-run only prints scenarios and needs no model.
+  if (!dryRun && !models.length) {
     throw new Error("Pass --model <lm-studio-id>");
   }
   const runAt = new Date().toISOString();

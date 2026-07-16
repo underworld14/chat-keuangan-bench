@@ -11,6 +11,7 @@
  */
 
 import { config } from "dotenv";
+import { existsSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { SYSTEM_PROMPT, parseMessage } from "../src/core/eval-core.ts";
 import { buildTaxonomy, taxonomyStats, type Cell } from "../src/core/parse-taxonomy.ts";
@@ -18,7 +19,13 @@ import { assertNoLeak, maxSimilarity, LeakError } from "../src/core/parse-leakgu
 import { applyLlmConfigOverrides, chatCompletion, getLlmConfig, listModels } from "../src/core/llm-client.ts";
 import { tokenizeAmounts } from "../src/core/rupiah.ts";
 import { RejectError, validateRow } from "./lib/sft-validate.ts";
-import { buildTextPrompt, cellToSpec, expectedTextAmounts, type RowSpec } from "./lib/sft-spec.ts";
+import {
+  buildTextPrompt,
+  cellToSpec,
+  excusedByConstruction,
+  expectedTextAmounts,
+  type RowSpec,
+} from "./lib/sft-spec.ts";
 import {
   RawSink,
   RejectSink,
@@ -206,7 +213,7 @@ function guardSpecBijection(text: string, spec: RowSpec): void {
   }
 }
 
-async function attemptRow(args: Args, spec: RowSpec, rng: () => number): Promise<RawRow> {
+async function attemptRow(args: Args, spec: RowSpec): Promise<RawRow> {
   const { text, ms: textMs } = await genText(args.model, spec, args.textTemperature);
   if (text.length < 3) throw new RejectError("text:bijection", "teacher returned an empty message");
 
@@ -227,6 +234,7 @@ async function attemptRow(args: Args, spec: RowSpec, rng: () => number): Promise
     label: parsed,
     spec: spec.expectation,
     shape: { allowDuplicateEntries: spec.allowDuplicateEntries },
+    excusedByConstruction: excusedByConstruction(spec),
   });
 
   return {
@@ -240,7 +248,10 @@ async function attemptRow(args: Args, spec: RowSpec, rng: () => number): Promise
     meta: {
       traceTiers,
       maxSimilarity: maxSimilarity(text),
-      systemPromptMode: pickSystemPromptMode(args.systemPromptMode, rng),
+      // Derived from the row's own seed, never the shared plan RNG: workers finish out of
+      // order, so a shared generator would hand out modes in completion order and the same
+      // seed would stop reproducing the same corpus.
+      systemPromptMode: pickSystemPromptMode(args.systemPromptMode, mulberry32(args.seed ^ spec.planIndex)),
       teacher: args.model,
       textMs,
       labelMs,
@@ -351,9 +362,18 @@ async function main(): Promise<void> {
   }
   console.log(`Preflight OK (structured output in ${probe.ms}ms)\n`);
 
+  // Truncation happens only here — after preflight proved the teacher reachable and capable,
+  // so a dead server can never destroy a prior corpus. Without the unlink, --overwrite merely
+  // bypassed the guard while RawSink still loaded the old rows, so the run appended (or
+  // no-opped at "Accepted 5/5") and then published a manifest attesting to a corpus it had
+  // not generated.
+  if (args.overwrite && existsSync(rawPath)) {
+    rmSync(rawPath);
+    console.log(`--overwrite: cleared ${rawPath}`);
+  }
   const raw = new RawSink(rawPath);
-  if (raw.count > 0 && !args.resume && !args.overwrite) {
-    console.error(`FATAL: ${rawPath} already has ${raw.count} rows. Pass --resume to extend it, or --overwrite.`);
+  if (raw.count > 0 && !args.resume) {
+    console.error(`FATAL: ${rawPath} already has ${raw.count} rows. Pass --resume to extend it, or --overwrite to replace it.`);
     process.exit(1);
   }
   const rejects = new RejectSink(rejectsPath);
@@ -377,7 +397,7 @@ async function main(): Promise<void> {
       if (done.has(spec.planIndex)) continue;
 
       try {
-        const row = await attemptRow(args, spec, rng);
+        const row = await attemptRow(args, spec);
         const key = row.text.toLowerCase();
         if (seenTexts.has(key)) {
           rejectsByPhase.dedup = (rejectsByPhase.dedup ?? 0) + 1;
@@ -440,6 +460,32 @@ async function main(): Promise<void> {
   const modeHist: Record<string, number> = {};
   for (const r of rows) modeHist[r.meta.systemPromptMode] = (modeHist[r.meta.systemPromptMode] ?? 0) + 1;
 
+  // Realized, not planned. taxonomyStats() describes all 339 cells regardless of what was
+  // sampled or accepted, so a --count 100 pilot would otherwise publish a manifest claiming
+  // 2034 rows at the target class balance while the real corpus looked nothing like it —
+  // and the Phase-4 pilot gate exists precisely to catch that.
+  const realizedAspect: Record<string, number> = {};
+  const realizedTier: Record<string, number> = {};
+  const realizedSplit: Record<string, number> = {};
+  let entriesTotal = 0;
+  let entriesMasuk = 0;
+  let nonTxRows = 0;
+  const realizedDateHint: Record<string, number> = {};
+  for (const r of rows) {
+    realizedAspect[r.aspect] = (realizedAspect[r.aspect] ?? 0) + 1;
+    realizedTier[r.tier] = (realizedTier[r.tier] ?? 0) + 1;
+    realizedSplit[r.split] = (realizedSplit[r.split] ?? 0) + 1;
+    if (r.label.bukan_transaksi) nonTxRows++;
+    for (const e of r.label.entries) {
+      entriesTotal++;
+      if (e.type === "pemasukan") entriesMasuk++;
+      const h = e.tanggal_hint ?? "null";
+      realizedDateHint[h] = (realizedDateHint[h] ?? 0) + 1;
+    }
+  }
+  // An aspect that yielded nothing is invisible in per-cell rates but fatal to coverage.
+  const zeroYieldAspects = [...new Set(cells.map((c) => c.aspect))].filter((a) => !realizedAspect[a]);
+
   const { gitSha, dirty } = gitProvenance();
   const manifest = {
     bench: "chat-keuangan-sft-parse",
@@ -456,7 +502,17 @@ async function main(): Promise<void> {
     systemPromptChars: SYSTEM_PROMPT.length,
     systemPromptModeRequested: args.systemPromptMode,
     systemPromptModeRealized: modeHist,
-    taxonomy: { cells: cells.length, stats },
+    taxonomy: { cells: cells.length, plannedStats: stats },
+    realized: {
+      rows: rows.length,
+      byAspect: realizedAspect,
+      byTier: realizedTier,
+      bySplit: realizedSplit,
+      zeroYieldAspects,
+      nonTransactionRowShare: rows.length ? Number((nonTxRows / rows.length).toFixed(3)) : 0,
+      entryLevelPemasukanShare: entriesTotal ? Number((entriesMasuk / entriesTotal).toFixed(3)) : 0,
+      dateHint: realizedDateHint,
+    },
     counts: { accepted, attempts, successRate: Number(successRate.toFixed(3)) },
     rejectsByPhase,
     perCellAcceptRate: perCellAccept,
@@ -474,6 +530,12 @@ async function main(): Promise<void> {
   console.log(`Splits: train=${counts.train} valid=${counts.valid} test=${counts.test}`);
   console.log(`Rejects by phase: ${JSON.stringify(rejectsByPhase)}`);
   console.log(`Trace tiers: ${JSON.stringify(traceHist)}`);
+  console.log(`Realized entry-level pemasukan: ${((entriesMasuk / Math.max(entriesTotal, 1)) * 100).toFixed(1)}% (target 23%, hard-25 baseline 8.9%)`);
+  console.log(`Realized non-transaction rows: ${((nonTxRows / Math.max(rows.length, 1)) * 100).toFixed(1)}% (target ~12%)`);
+  if (zeroYieldAspects.length > 0) {
+    console.error(`\n${zeroYieldAspects.length} aspects yielded ZERO rows — the student will be blind to them:`);
+    for (const a of zeroYieldAspects) console.error(`  ${a}`);
+  }
   console.log(`Max similarity vs scored corpus: p50=${pct(0.5)} p95=${pct(0.95)} max=${sims[sims.length - 1] ?? 0}`);
   if (weakCells.length > 0) {
     console.log(`\n${weakCells.length} cells accepted below 90% — the teacher is weak there; hand-label or drop:`);

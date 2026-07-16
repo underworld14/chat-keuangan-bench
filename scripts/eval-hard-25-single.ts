@@ -54,26 +54,44 @@ function parseArgs(): CliArgs {
   return { model, label, baseUrl, apiKey };
 }
 
+const COMPAT_TIMEOUT_MS = 120_000;
+
+/**
+ * Retryable here means "this server or model cannot do JSON object mode" — the plain-json
+ * retry is a real second chance at the same scenario. A transport failure (404, auth,
+ * connection refused) is not: retrying just doubles the wait, fails identically, and
+ * discards the original error, which is the only thing that would tell you the model id
+ * is wrong.
+ */
+function isJsonModeFailure(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/HTTP (401|403|404)\b/.test(msg)) return false;
+  if (/Unable to connect|ECONNREFUSED|fetch failed|timed out|aborted/i.test(msg)) return false;
+  return true; // 400 rejecting response_format, or unparseable JSON from json_object mode
+}
+
 async function parseViaCompat(
   model: string,
   text: string,
 ): Promise<{ parsed: ParsedFinance; ms: number; usage: { prompt_tokens?: number; completion_tokens?: number } }> {
+  const base = { model, temperature: 0, maxTokens: 2048, timeoutMs: COMPAT_TIMEOUT_MS };
   try {
     const { content, ms, usage } = await chatCompletion({
-      model,
+      ...base,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: text },
       ],
-      temperature: 0,
-      maxTokens: 2048,
       jsonObject: true,
     });
     return { parsed: parseFinanceJson(content), ms, usage };
-  } catch {
-    // Some local servers reject response_format — retry without it.
+  } catch (err) {
+    if (!isJsonModeFailure(err)) throw err;
+    // Some local servers reject response_format, and json_object mode is not
+    // grammar-constrained so it can still emit unparseable JSON. Both earn one plain retry,
+    // mirroring parseMessage's structured -> plain-json fallback so the two runners grade alike.
     const { content, ms, usage } = await chatCompletion({
-      model,
+      ...base,
       messages: [
         {
           role: "system",
@@ -81,8 +99,6 @@ async function parseViaCompat(
         },
         { role: "user", content: text },
       ],
-      temperature: 0,
-      maxTokens: 2048,
       jsonObject: false,
     });
     return { parsed: parseFinanceJson(content), ms, usage };

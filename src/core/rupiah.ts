@@ -192,15 +192,17 @@ export function tokenizeAmounts(text: string): AmountAtom[] {
   }
 
   // 1. Spelled ("setengah juta") — before suffixes, which would otherwise eat "juta".
+  //    Word-boundary matched like every other family: a bare indexOf turns "sejutaan"
+  //    ("roughly a million" — `-an` is Indonesian's fuzzy marker) into an exact 1_000_000
+  //    with ambigu=false, which every downstream gate then accepts. Silently wrong gold is
+  //    worse than a rejected row, so an approximate surface must yield no atom and reject.
   for (const [surface, value] of SPELLED) {
-    let from = 0;
-    for (;;) {
-      const idx = lower.indexOf(surface, from);
-      if (idx === -1) break;
-      if (claim(idx, idx + surface.length)) {
-        atoms.push({ raw: text.slice(idx, idx + surface.length), value, index: idx, kind: "spelled" });
+    const re = new RegExp(`\\b${surface.replace(/\s+/g, "\\s+")}\\b`, "gi");
+    for (const m of lower.matchAll(re)) {
+      const idx = m.index;
+      if (claim(idx, idx + m[0].length)) {
+        atoms.push({ raw: text.slice(idx, idx + m[0].length), value, index: idx, kind: "spelled" });
       }
-      from = idx + surface.length;
     }
   }
 

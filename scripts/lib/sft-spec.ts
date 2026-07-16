@@ -35,7 +35,9 @@ function inv<K extends Invariant["kind"]>(cell: Cell, kind: K): Extract<Invarian
  *
  * Two cases need care:
  *  - `direction_count` fixes how many entries flow each way but not WHICH amount is which,
- *    so we assign deterministically (income takes the first N amounts) and tell the teacher.
+ *    so we assign deterministically (income takes the first N amounts). buildTextPrompt then
+ *    states that assignment per surface — without it the teacher is guessing, and on a
+ *    two-amount mixed cell it loses the coin flip half the time through no fault of its own.
  *  - `qty_merge_ok` admits two correct readings (N × unit, or one merged total), so both
  *    become alternatives rather than forcing a coin-flip the teacher could lose fairly.
  */
@@ -93,6 +95,21 @@ export function cellToSpec(cell: Cell, planIndex: number): RowSpec {
     allowDuplicateEntries: qty !== null,
     quantity: qty ? { keyword: qty.keyword, unit: qty.unit, count: qty.count } : null,
   };
+}
+
+/**
+ * Amounts the spec ordered into the text but deliberately did NOT book: a non-transaction's
+ * nominal, a distractor (gross price / superseded value), and — under the merged qty reading —
+ * the unit price. The dropped-entry gate must treat these as compliance, not omission;
+ * without it the gate rejects the teacher for writing exactly what we asked, which silently
+ * deleted the ntx_curhat and ntx_query aspects outright.
+ */
+export function excusedByConstruction(spec: RowSpec): Set<number> {
+  const booked = new Set((spec.expectation.alternatives[0] ?? []).map((e) => e.amount));
+  const out = new Set<number>();
+  for (const d of spec.distractors) out.add(d.rupiah);
+  for (const s of spec.surfaces) if (!booked.has(s.rupiah)) out.add(s.rupiah);
+  return out;
 }
 
 /**
@@ -155,8 +172,12 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
     "- Panjang wajar: satu baris, biasanya di bawah 20 kata (kecuali diminta bertele-tele).",
   ].join("\n");
 
+  const alt0 = spec.expectation.alternatives[0] ?? [];
+  const nMasuk = alt0.filter((e) => e.direction === "pemasukan").length;
+  const nKeluar = alt0.filter((e) => e.direction === "pengeluaran").length;
+
   const lines: string[] = [];
-  lines.push(`Tulis satu pesan yang menyatakan: ${aspectBrief(c.aspect)}`);
+  lines.push(`Tulis satu pesan yang menyatakan: ${aspectBrief(c.aspect, nMasuk, nKeluar)}`);
   lines.push("");
   if (spec.surfaces.length === 0) {
     // A dangling "nominal wajib:" header with nothing under it invites an invented amount,
@@ -164,7 +185,22 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
     lines.push("JANGAN sebut nominal rupiah apa pun. Pesan ini memang tidak memuat angka uang.");
   } else {
     lines.push("Nominal yang WAJIB muncul persis seperti ini:");
-    for (const n of spec.surfaces) lines.push(`  - "${n.surface}"  (artinya Rp${n.rupiah.toLocaleString("id-ID")})`);
+    // The direction MUST be stated per surface. The aspect brief alone is not enough: aspects
+    // like ord_vendor_named vary direction across cells while the brief says "pengeluaran",
+    // so an `in` cell would order an expense and then reject the teacher for writing one.
+    // Deriving it from the expectation keeps prompt and answer key on one source of truth.
+    const byAmount = new Map<number, "pemasukan" | "pengeluaran">();
+    for (const e of spec.expectation.alternatives[0] ?? []) byAmount.set(e.amount, e.direction);
+    for (const n of spec.surfaces) {
+      const dir = byAmount.get(n.rupiah);
+      const tag =
+        dir === "pemasukan"
+          ? "  → ini uang MASUK (diterima)"
+          : dir === "pengeluaran"
+            ? "  → ini uang KELUAR (dibayar)"
+            : "";
+      lines.push(`  - "${n.surface}"  (artinya Rp${n.rupiah.toLocaleString("id-ID")})${tag}`);
+    }
   }
 
   if (spec.quantity) {
@@ -218,8 +254,52 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
   return { system, user: lines.join("\n") };
 }
 
-/** One line per aspect telling the teacher what the message must MEAN. */
-function aspectBrief(aspect: string): string {
+/**
+ * One line per aspect telling the teacher what the message must MEAN.
+ *
+ * Several aspects vary direction across cells (ord_vendor_named can be out/in/mixed), so the
+ * brief must not hardcode "pengeluaran". Where the wording is direction-neutral the caller's
+ * per-surface MASUK/KELUAR tags carry the meaning; where it isn't, we override from the spec.
+ */
+function aspectBrief(aspect: string, nMasuk: number, nKeluar: number): string {
+  const generic = (() => {
+    if (nMasuk > 0 && nKeluar > 0) return "uang masuk DAN uang keluar dalam satu pesan";
+    if (nMasuk > 0) return nMasuk > 1 ? "beberapa pemasukan (uang MASUK)" : "satu pemasukan (uang MASUK)";
+    return null;
+  })();
+
+  // These briefs are written as expenses but their cells may be income or mixed. When the spec
+  // says otherwise the brief would contradict the answer key, so the spec wins.
+  const DIRECTION_VARYING = new Set([
+    "ord_vendor_named",
+    "ord_rail_named",
+    "ord_date_relative",
+    "ord_no_date",
+    "ord_wa_wrapper",
+    "not_dot_separator",
+    "not_k_suffix_decimal",
+    "not_slang_hokkien",
+    "reg_regional_lexicon",
+    "noi_typo_heavy",
+    "noi_voice_rambling",
+  ]);
+  if (generic && DIRECTION_VARYING.has(aspect)) {
+    const flavour: Record<string, string> = {
+      ord_vendor_named: "di sebuah toko/tempat yang disebut namanya",
+      ord_rail_named: "yang menyebut cara bayar/terimanya",
+      ord_date_relative: "dengan keterangan waktu relatif",
+      ord_no_date: "tanpa keterangan waktu sama sekali",
+      ord_wa_wrapper: "dibungkus basa-basi WhatsApp ('catat ya:', salam, emoji)",
+      not_dot_separator: "dengan nominal bertitik ribuan",
+      not_k_suffix_decimal: "dengan nominal berakhiran k, ada desimalnya",
+      not_slang_hokkien: "dengan nominal memakai slang (ceban/goceng/gopek)",
+      reg_regional_lexicon: "dengan kosakata khas daerah",
+      noi_typo_heavy: "ditulis dengan banyak typo",
+      noi_voice_rambling: "dari transkrip suara yang bertele-tele",
+    };
+    return `${generic} ${flavour[aspect] ?? ""}`.trim();
+  }
+
   const briefs: Record<string, string> = {
     ord_single_out: "satu pengeluaran biasa sehari-hari",
     ord_single_in: "satu pemasukan biasa (uang masuk)",

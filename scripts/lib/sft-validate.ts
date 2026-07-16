@@ -58,9 +58,10 @@ function crossFieldRules(v: ParsedFinance, ctx: z.RefinementCtx, shape: RowShape
     if (e.deskripsi.trim().split(/\s+/).length > MAX_DESKRIPSI_WORDS) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["entries", i, "deskripsi"], message: `deskripsi longer than ${MAX_DESKRIPSI_WORDS} words` });
     }
-    if (e.kategori && e.kategori === e.deskripsi) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["entries", i, "kategori"], message: "kategori duplicates deskripsi" });
-    }
+    // No kategori rule here on purpose. SYSTEM_PROMPT gives the teacher zero guidance on it
+    // (it appears only in the JSON shape list), the design leaves it free-form and unasserted,
+    // and for single-word commodity buys deskripsi="pulsa"/kategori="pulsa" is a defensible
+    // parse. Rejecting the whole row over it would be an unforced error.
     // KBBI lusa = the day after tomorrow. SYSTEM_PROMPT extracts only what already happened
     // and rules future intent non-transactional, so a correct parse can never reach it.
     if (e.tanggal_hint === "lusa") {
@@ -136,9 +137,20 @@ export function guardTrace(
 /**
  * Money in the text but not in the label, with no cue explaining the omission.
  * Catches DROPPED entries — invisible to forward tracing, and the worse poison for a ledger.
+ *
+ * `excusedByConstruction` carries amounts the SPEC deliberately ordered into the text without
+ * booking them: a non-transaction's nominal ("besok mau beli kulkas 3jt"), a qty cell's unit
+ * price under the merged reading, a distractor. Those are compliance, not omission — without
+ * this the gate rejects the teacher for writing exactly what we asked, which silently deleted
+ * the ntx_curhat and ntx_query aspects entirely.
  */
-export function guardDroppedEntries(text: string, atoms: AmountAtom[], label: ParsedFinance): void {
-  const consumed = new Set(label.entries.map((e) => e.jumlah));
+export function guardDroppedEntries(
+  text: string,
+  atoms: AmountAtom[],
+  label: ParsedFinance,
+  excusedByConstruction: ReadonlySet<number> = new Set(),
+): void {
+  const consumed = new Set([...label.entries.map((e) => e.jumlah), ...excusedByConstruction]);
   const unexcused = unexcusedAtoms(text, atoms, consumed);
   if (unexcused.length > 0) {
     throw new RejectError(
@@ -259,6 +271,8 @@ export function validateRow(args: {
   label: ParsedFinance;
   spec: LabelExpectation;
   shape?: RowShape;
+  /** Amounts the spec ordered into the text but deliberately did not book. */
+  excusedByConstruction?: ReadonlySet<number>;
 }): { atoms: AmountAtom[]; traceTiers: TraceTier[] } {
   const atoms = tokenizeAmounts(args.text);
   guardAmbiguousText(atoms);
@@ -269,7 +283,7 @@ export function validateRow(args: {
   }
 
   const { tiers } = guardTrace(args.label, atoms);
-  guardDroppedEntries(args.text, atoms, args.label);
+  guardDroppedEntries(args.text, atoms, args.label, args.excusedByConstruction);
 
   const agree = compareLabelToSpec(args.label, args.spec);
   if (!agree.ok) {

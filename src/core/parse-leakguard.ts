@@ -17,9 +17,30 @@ import { ALL_SCORED_TEXTS, type ScoredText } from "./eval-corpus.ts";
 import { tokenizeAmounts } from "./rupiah.ts";
 
 const JACCARD_THRESHOLD = 0.5;
-const NGRAM_THRESHOLD = 0.7;
-const AMOUNT_OVERLAP_THRESHOLD = 2;
+export const NGRAM_THRESHOLD = 0.7;
 const NGRAM_N = 4;
+
+/**
+ * Amount overlap only counts DISTINCTIVE amounts.
+ *
+ * Indonesian casual spending draws from a tiny pool of round numbers, so "shares two amounts
+ * with a bench item" is the norm, not evidence. Measured: a flat shared>=2 rule blocked 7 of
+ * 15 ordinary two-amount messages whose lexical similarity to the bench was ~0.13 — nowhere
+ * near the 0.5 threshold — silently starving the `ordinary` tier, 40% of the corpus.
+ *
+ * Distinctiveness is about the number's FORM, not just how often it occurs. Document-frequency
+ * alone is a trap at this corpus size: 55.000, 150.000, 185.000 and 3jt all have df=1 purely
+ * because only one scored item happens to use them, yet they are exactly what ordinary chat
+ * produces. What actually fingerprints a scenario is a non-round amount — real messages say
+ * "20rb", the bench says "102.500". So an amount identifies a scored item only when it is
+ * large enough to be money, NOT a whole thousand, and used by at most a couple of items.
+ */
+const AMOUNT_RARE_MAX_DF = 2;
+/** Below this, a stray integer is a quantity or a year, not a fingerprint. */
+const AMOUNT_DISTINCTIVE_MIN = 10_000;
+/** Ordinary chat rounds to the thousand; 102.500 and 63.700 do not. */
+const AMOUNT_ROUND_MODULUS = 1_000;
+const AMOUNT_OVERLAP_THRESHOLD = 1;
 
 /** Tokens that carry no content and inflate similarity between unrelated messages. */
 const STOPWORDS = new Set([
@@ -82,6 +103,19 @@ const CORPUS: CorpusEntry[] = ALL_SCORED_TEXTS.map((t) => ({
   amountSet: new Set([...t.amounts, ...tokenizeAmounts(t.text).map((a) => a.value)]),
 }));
 
+/** How many scored items use each amount. High document-frequency == a round number == no signal. */
+const AMOUNT_DF: ReadonlyMap<number, number> = (() => {
+  const df = new Map<number, number>();
+  for (const c of CORPUS) for (const v of c.amountSet) df.set(v, (df.get(v) ?? 0) + 1);
+  return df;
+})();
+
+function isDistinctiveAmount(v: number): boolean {
+  if (v < AMOUNT_DISTINCTIVE_MIN) return false;
+  if (v % AMOUNT_ROUND_MODULUS === 0) return false;
+  return (AMOUNT_DF.get(v) ?? 0) <= AMOUNT_RARE_MAX_DF;
+}
+
 export type LeakHit = {
   reason: "exact" | "substring" | "jaccard" | "ngram" | "amounts";
   scoredId: string;
@@ -117,15 +151,17 @@ export function findLeaks(text: string): LeakHit[] {
       hits.push({ reason: "ngram", scoredId: c.id, suite: c.suite, score: g, detail: c.text });
       continue;
     }
-    let shared = 0;
-    for (const v of amounts) if (c.amountSet.has(v)) shared++;
-    if (shared >= AMOUNT_OVERLAP_THRESHOLD) {
+    // Only distinctive amounts count: sharing 25.000 with a bench item teaches a student
+    // nothing about it, but sharing 63.700 and 102.500 identifies the scenario.
+    const sharedRare: number[] = [];
+    for (const v of amounts) if (c.amountSet.has(v) && isDistinctiveAmount(v)) sharedRare.push(v);
+    if (sharedRare.length >= AMOUNT_OVERLAP_THRESHOLD) {
       hits.push({
         reason: "amounts",
         scoredId: c.id,
         suite: c.suite,
-        score: shared,
-        detail: `shares ${shared} amounts with "${c.text}"`,
+        score: sharedRare.length,
+        detail: `shares distinctive amounts ${sharedRare.join(", ")} with "${c.text}"`,
       });
     }
   }
