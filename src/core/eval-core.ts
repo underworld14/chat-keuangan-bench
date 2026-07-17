@@ -5,6 +5,7 @@
  */
 
 import { config } from "dotenv";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateText, Output } from "ai";
 import { z } from "zod";
@@ -918,6 +919,46 @@ async function runEval(modelId: string, scenarios: Scenario[]): Promise<EvalRunR
   return { modelId, passCount, total: scenarios.length, meanMs, byStyle, failures };
 }
 
+function safeModelSlug(modelId: string): string {
+  return modelId.replace(/[^a-zA-Z0-9._-]+/g, "-").toLowerCase();
+}
+
+/** Persist base-suite runs for the Parse scorecard (score:parse). */
+function writeBaseRunArtifact(result: EvalRunResult, runAt: string, suite: Suite): string | null {
+  if (suite !== "base") return null;
+  const outDir = resolve(import.meta.dirname, "../../docs/results/runs");
+  mkdirSync(outDir, { recursive: true });
+  const dateSlug = runAt.slice(0, 10);
+  const jsonPath = resolve(
+    outDir,
+    `${dateSlug}-parse-base-${safeModelSlug(result.modelId)}-results.json`,
+  );
+  const byStyle: Record<string, { pass: number; total: number }> = {};
+  for (const [style, bucket] of result.byStyle) {
+    byStyle[style] = { pass: bucket.pass, total: bucket.total };
+  }
+  writeFileSync(
+    jsonPath,
+    JSON.stringify(
+      {
+        kind: "parse-base",
+        suite: "base",
+        runAt,
+        modelId: result.modelId,
+        baseURL: getLlmConfig().baseURL,
+        passCount: result.passCount,
+        total: result.total,
+        meanMs: result.meanMs,
+        byStyle,
+        failures: result.failures,
+      },
+      null,
+      2,
+    ),
+  );
+  return jsonPath;
+}
+
 async function main() {
   const { model, limit, dryRun, suite, models: modelsArg, baseUrl, apiKey } = parseArgs(
     process.argv.slice(2),
@@ -926,6 +967,7 @@ async function main() {
   const allScenarios = scenariosForSuite(suite);
   const scenarios = limit ? allScenarios.slice(0, limit) : allScenarios;
   const models = modelsArg?.length ? modelsArg : [model];
+  const runAt = new Date().toISOString();
 
   console.log(`\n=== Indonesian Finance Parse Eval ===`);
   console.log(`Base URL: ${getLlmConfig().baseURL}`);
@@ -940,7 +982,10 @@ async function main() {
 
   const results: EvalRunResult[] = [];
   for (const m of models) {
-    results.push(await runEval(m, scenarios));
+    const result = await runEval(m, scenarios);
+    results.push(result);
+    const path = writeBaseRunArtifact(result, runAt, suite);
+    if (path) console.log(`Wrote ${path}`);
   }
 
   if (results.length > 1) {

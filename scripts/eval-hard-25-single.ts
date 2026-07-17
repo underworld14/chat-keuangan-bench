@@ -23,7 +23,11 @@ import {
   chatCompletion,
   getLlmConfig,
 } from "../src/core/llm-client.ts";
-import { HARD_SCENARIOS } from "./eval-hard-25.ts";
+import {
+  HARD_SCENARIOS,
+  analyzeQuality,
+  type QualityAnalysis,
+} from "./eval-hard-25.ts";
 
 interface CliArgs {
   model: string;
@@ -52,6 +56,10 @@ function parseArgs(): CliArgs {
   }
 
   return { model, label, baseUrl, apiKey };
+}
+
+function safeSlug(s: string): string {
+  return s.replace(/[^a-zA-Z0-9._-]+/g, "-").toLowerCase();
 }
 
 const COMPAT_TIMEOUT_MS = 120_000;
@@ -126,6 +134,7 @@ async function main() {
     completionTokens: number;
     issues: string[];
     error: string | null;
+    quality: QualityAnalysis | null;
   }> = [];
 
   for (const scenario of HARD_SCENARIOS) {
@@ -133,6 +142,7 @@ async function main() {
     try {
       const { parsed, ms, usage } = await parseViaCompat(model, scenario.text);
       const scored = scoreExtraction(parsed, scenario);
+      const quality = analyzeQuality(parsed, scenario);
       results.push({
         scenarioId: scenario.id,
         strictPass: scored.pass,
@@ -141,10 +151,14 @@ async function main() {
         completionTokens: usage.completion_tokens ?? 0,
         issues: scored.issues,
         error: null,
+        quality,
       });
-      console.log(`${scored.pass ? "PASS" : "FAIL"} ${ms}ms`);
-      if (!scored.pass && scored.issues.length) {
-        console.log(`         ${scored.issues.slice(0, 2).join(" | ")}`);
+      const icon = quality.strictPass ? "PASS" : quality.tier === "usable_with_edit" ? "EDIT" : "FAIL";
+      console.log(
+        `${icon} strict=${quality.strictPass} tier=${quality.tier} composite=${quality.compositeScore} (${ms}ms)`,
+      );
+      if (!quality.strictPass && quality.qualityNotes.length) {
+        console.log(`         notes: ${quality.qualityNotes.slice(0, 2).join(" | ")}`);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -157,35 +171,49 @@ async function main() {
         completionTokens: 0,
         issues: [],
         error: msg,
+        quality: null,
       });
     }
   }
 
   const ok = results.filter((r) => r.strictPass && !r.error);
+  const composites = results
+    .filter((r) => r.quality)
+    .map((r) => r.quality!.compositeScore);
+  const meanComposite =
+    composites.length > 0
+      ? composites.reduce((a, b) => a + b, 0) / composites.length
+      : 0;
   const avgMs =
     results.filter((r) => r.ms > 0).reduce((s, r) => s + r.ms, 0) /
     Math.max(results.filter((r) => r.ms > 0).length, 1);
 
   console.log(`\n${"=".repeat(72)}`);
   console.log(`Strict: ${ok.length}/${HARD_SCENARIOS.length}`);
+  console.log(`Mean composite: ${meanComposite.toFixed(1)}`);
   console.log(`Avg latency: ${Math.round(avgMs)}ms`);
   console.log(`Errors: ${results.filter((r) => r.error).length}`);
 
   const outDir = resolve(import.meta.dirname, "../docs/results/runs");
   mkdirSync(outDir, { recursive: true });
   const slug = runAt.slice(0, 10);
-  const safeLabel = label.replace(/[^a-zA-Z0-9-]+/g, "-").toLowerCase();
-  const jsonPath = resolve(outDir, `${slug}-${safeLabel}-results.json`);
+  const jsonPath = resolve(
+    outDir,
+    `${slug}-parse-hard-25-${safeSlug(model)}-${safeSlug(label)}-results.json`,
+  );
   writeFileSync(
     jsonPath,
     JSON.stringify(
       {
+        kind: "parse-hard-25",
         runAt,
         label,
+        modelId: model,
         model,
         baseURL,
         strictPass: ok.length,
         totalScenarios: HARD_SCENARIOS.length,
+        meanComposite,
         avgMs,
         results,
       },

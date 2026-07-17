@@ -1055,6 +1055,7 @@ async function main() {
   const allModels = [...new Set(mergedResults.map((r) => r.modelId))].sort();
 
   const payload = {
+    kind: "parse-hard-25" as const,
     runAt,
     baseURL: getLlmConfig().baseURL,
     models: allModels,

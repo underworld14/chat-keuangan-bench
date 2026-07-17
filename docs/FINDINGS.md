@@ -9,8 +9,8 @@ Parse Indonesian casual finance chat (WhatsApp / voice style) into structured `p
 ## Local loop
 
 1. Serve a model in LM Studio (OpenAI-compatible `/v1`).
-2. `bun run eval:single -- --model <id> --label <tag>`
-3. Inspect `docs/results/runs/*-results.json`
+2. `bun run eval:parse -- --model <id> --label <tag>` (base then hard)
+3. `bun run score:parse` → `docs/results/parse/` + `docs/charts/parse/`
 4. Generate SFT data with a stronger local teacher: `bun run generate:sft-parse`
 5. Fine-tune (Unsloth outside this repo) → import GGUF → re-eval
 

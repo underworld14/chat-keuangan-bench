@@ -13,16 +13,16 @@ dependency; see [`docs/AGENTIC.md`](docs/AGENTIC.md).)
 
 ## Two benches
 
-| | **Parse-25** | **Rupiah-Pro** |
+| | **Parse** (base + hard) | **Rupiah-Pro** |
 |--|--------------|----------------|
 | **What** | One-shot parse → structured `pemasukan` / `pengeluaran` JSON | Multi-turn agent with tools |
-| **Run** | `bun run eval:hard-25 -- --model <id>` | `bun run eval:agentic -- --model <id>` then `bun run score:rupiah-pro` |
+| **Run** | `bun run eval:parse -- --model <id>` then `bun run score:parse` | `bun run eval:agentic -- --model <id>` then `bun run score:rupiah-pro` |
 | **Docs** | [`docs/REPORT.md`](docs/REPORT.md) · [`docs/FINDINGS.md`](docs/FINDINGS.md) | [`docs/AGENTIC.md`](docs/AGENTIC.md) |
 
-Plus a **base suite** (`bun run eval` — 28 everyday scenarios, or 40 with the 12 stress cases via
-the default `--suite all`) that is the better first measurement for small models, and an **SFT
-corpus generator** (`bun run generate:sft-parse`) that produces training data for a small local
-parser.
+`eval:parse` runs **base (28)** then **Parse-25 hard** sequentially. Prefer this for small
+on-device models. Individual runners (`eval --suite base`, `eval:single`, `eval:hard-25`) remain
+for smoke tests. An **SFT corpus generator** (`bun run generate:sft-parse`) produces training data
+for a small local parser.
 
 ---
 
@@ -52,25 +52,25 @@ Or set `OPENAI_COMPATIBLE_BASE_URL` / `EVAL_MODEL` / `JUDGE_MODEL` in `.env`.
 Order matters: take the baseline **before** changing anything, or you can't tell what moved.
 
 ```bash
-# 1. Baseline — everyday scenarios. Start here for small models; Parse-25 is a trap suite and a
-#    1.7B will score badly on it in a way that tells you little.
-#    --suite base (28) · stress (12) · all (40, default)
-bun run eval -- --models qwen3-1.7b,gemma-3-1b,llama-3.2-3b --suite base
+# Main entry — base (28) then Parse-25 hard, per model. Add --score to refresh the board.
+bun run eval:parse -- --model qwen3-1.7b
+bun run eval:parse -- --models qwen3-1.7b,gemma-3-1b --label baseline --score
 
-# 2. Parse-25 — 25 adversarial scenarios, head-to-head scoreboard + per-model composite.
-bun run eval:hard-25 -- --models qwen3-1.7b,gemma-3-1b
-bun run eval:hard-25 -- --dry-run            # list scenarios, no model needed
+# Or refresh the Parse scorecard + charts from existing run JSON:
+bun run score:parse
 
-# 3. One model, quick smoke + a per-run JSON artifact.
-bun run eval:single -- --model qwen3-1.7b --label baseline
+# Smoke pieces separately if needed:
+bun run eval -- --model qwen3-1.7b --suite base
+bun run eval:single -- --model qwen3-1.7b --label smoke
+bun run eval:hard-25 -- --dry-run
 
-# 4. Rupiah-Pro — multi-turn agent with tools.
+# Rupiah-Pro — multi-turn agent with tools (separate board).
 bun run eval:agentic -- --suite all --model <id> --concurrency 1 --skip-judge
 bun run score:rupiah-pro
 ```
 
-Reports land in `docs/results/runs/` (Parse-25) and `docs/results/agentic/` (Rupiah-Pro), as a
-timestamped JSON plus a markdown scoreboard.
+Artifacts: `docs/results/runs/` (raw base/hard JSON) → `docs/results/parse/` (leaderboard) →
+`docs/charts/parse/` (SVG). Rupiah-Pro stays under `docs/results/agentic/` + `docs/charts/rupiah-pro/`.
 
 ---
 

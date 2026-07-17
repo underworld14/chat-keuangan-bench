@@ -25,6 +25,7 @@
   ],
   "scripts": {
     "eval": "bun run src/core/eval-core.ts",
+    "eval:parse": "bun run scripts/eval-parse.ts",
     "eval:hard-12": "bun run scripts/eval-hard-12.ts",
     "eval:hard-25": "bun run scripts/eval-hard-25.ts",
     "eval:single": "bun run scripts/eval-hard-25-single.ts",
@@ -34,11 +35,13 @@
     "fixtures:receipts": "bun run scripts/generate-receipt-fixtures.ts",
     "generate:sft-parse": "bun run scripts/generate-sft-parse.ts",
     "studio": "mastra dev --dir src/mastra",
+    "report:parse": "bun run scripts/generate-parse-charts.ts",
     "report:rupiah-pro": "bun run scripts/generate-rupiah-pro-charts.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "dry-run": "bun run src/core/eval-core.ts --dry-run --limit 5",
     "rescore:agentic-v2": "bun run scripts/score-rupiah-pro.ts",
+    "score:parse": "bun run scripts/score-parse.ts && bun run report:parse",
     "score:rupiah-pro": "bun run scripts/score-rupiah-pro.ts && bun run report:rupiah-pro"
   },
   "dependencies": {
