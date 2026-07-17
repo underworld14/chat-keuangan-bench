@@ -9,8 +9,21 @@
  * language model — which is why the agreement check costs zero GPU.
  */
 
-import type { Cell, Invariant, TokenValue } from "../../src/core/parse-taxonomy.ts";
+import { VENDORS, type Cell, type Invariant, type TokenValue } from "../../src/core/parse-taxonomy.ts";
 import type { ExpectedEntry, LabelExpectation } from "./sft-validate.ts";
+
+const VENDOR_BY_ID = new Map(VENDORS.map((v) => [v.id, v]));
+
+/** Resolve taxonomy vendor ids to natural phrase choices for the teacher prompt. */
+function vendorPromptLabels(ids: readonly string[]): string {
+  return ids
+    .map((id) => {
+      const v = VENDOR_BY_ID.get(id);
+      if (!v) return `"${id.replace(/_/g, " ")}"`;
+      return v.surfaces.slice(0, 3).map((s) => `"${s}"`).join(" / ");
+    })
+    .join("; ");
+}
 
 export type RowSpec = {
   planIndex: number;
@@ -126,21 +139,21 @@ export function expectedTextAmounts(spec: RowSpec): number[] {
 const REGISTER_HINTS: Record<string, string> = {
   baku: "bahasa Indonesia baku dan formal (saya, membeli, membayar)",
   jaksel_gaul: "gaul Jakarta Selatan (gue/gw, duit, banget, doang, aja) — sisipkan, jangan ubah angkanya",
-  betawi: "Betawi (gue, aje, dah, nih, bang)",
-  jawa: "campur Jawa (wis, tuku, duwit, piro, rek)",
+  betawi: "Betawi (gue, aje, dah, nih) — jangan sapaan 'bang' ke bot",
+  jawa: "campur Jawa (wis, tuku, duwit, piro) — jangan sapaan 'rek' ke bot",
   sunda: "campur Sunda (meuli, artos, atos, teu, mah, atuh)",
-  medan: "Medan — PENTING: pajak=pasar, kereta=sepeda motor, motor=mobil, kedai, awak, kelen",
+  medan: "Medan — PENTING: pajak=pasar, kereta=sepeda motor, motor=mobil, kedai, awak — jangan sapaan 'kelen' ke bot",
   minang: "campur Minang (pitih=uang, kadai=kedai, baa, lai)",
   makassar_timur: "Indonesia timur (partikel mi/ji/ki: 'sudah mi', 'berapa ki')",
-  pesantren: "lingkungan pesantren (infaq, sedekah, syahriah, setoran wali, ustadz, santri)",
+  pesantren: "kosakata pesantren sebagai isi transaksi (infaq, sedekah, syahriah, setoran wali, santri) — jangan sapaan 'ustadz' ke bot",
 };
 
 const NOISE_HINTS: Record<string, string> = {
   bersih: "tulis rapi, ejaan benar",
-  wa_ringkas: "gaya WhatsApp singkat, tanpa kapital, banyak singkatan (td, sm, dr, yg)",
-  voice_rambling: "hasil transkrip suara: bertele-tele, ada jeda '...', pengulangan, kata pengisi",
-  typo_berat: "banyak typo dan singkatan ngawur, huruf tertukar",
-  emoji_format: "pakai emoji dan format list/bullet ala WhatsApp",
+  wa_ringkas: "gaya chat ke bot: singkat, boleh tanpa kapital, singkatan (td, sm, dr, yg, catat ya)",
+  voice_rambling: "hasil voice-to-text ke bot: bertele-tele, jeda '...', pengulangan — tetap satu submit pencatatan, bukan ngobrol",
+  typo_berat: "banyak typo dan singkatan ngawur, huruf tertukar (tetap pesan ke bot)",
+  emoji_format: "boleh emoji / list singkat seperti chat ke bot pencatat",
 };
 
 const RAIL_HINTS: Record<string, string> = {
@@ -162,13 +175,22 @@ const RAIL_HINTS: Record<string, string> = {
 export function buildTextPrompt(spec: RowSpec): { system: string; user: string } {
   const c = spec.cell;
   const system = [
-    "Kamu menulis SATU pesan chat keuangan berbahasa Indonesia yang realistis, seperti yang benar-benar diketik orang ke aplikasi pencatatan lewat WhatsApp.",
+    "Kamu menulis SATU pesan yang dikirim user ke AI/bot pencatat keuangan berbahasa Indonesia.",
+    "Ini BUKAN chat ke teman. Frame: user baru selesai (atau mau menunda) transaksi, lalu submit teks singkat ke bot agar dicatat atau diabaikan.",
+    "",
+    "Campur gaya (pilih yang cocok dengan instruksi di bawah):",
+    "- kering: \"bpjs 3,2jt via dana\", \"top up gopay 17.500\"",
+    "- ringan ke bot: \"catat ya beli nasi padang 25rb\", \"transfer masuk 350rb td\"",
     "",
     "Aturan keras:",
     "- Keluarkan HANYA teks pesannya. Tanpa penjelasan, tanpa JSON, tanpa tanda kutip pembungkus.",
     "- WAJIB memuat setiap nominal yang diminta, PERSIS pada bentuk penulisan yang diberikan.",
     "- JANGAN menambahkan nominal rupiah lain apa pun di luar yang diminta.",
-    "- Tulis seperti manusia yang sedang buru-buru, bukan seperti contoh buku teks.",
+    "- JANGAN sapaan ke manusia seolah lawan bicara orang (bang, bro, rek, ustadz, mas, kak, kelen).",
+    "- JANGAN tulis nama tempat/barang dengan underscore (\"warung madura\", bukan \"warung_madura\").",
+    "- JANGAN tulis meta-label pengajaran (\"ini pengeluaran bukan pemasukan\", \"jelas duit pindah\", \"bukan transaksi\").",
+    "- Khusus rencana / batal / curhat: boleh isyarat alami ke bot (\"belum jadi\", \"batal\", \"jangan dicatat dulu\") — itu bagian dari submit.",
+    "- Tulis seperti manusia buru-buru ke bot, bukan contoh buku teks / roleplay.",
     "- Panjang wajar: satu baris, biasanya di bawah 20 kata (kecuali diminta bertele-tele).",
   ].join("\n");
 
@@ -249,7 +271,11 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
   const rail = RAIL_HINTS[c.rail];
   if (rail) lines.push(`Metode bayar (sebut sekilas, jangan jadikan entri terpisah): ${rail}`);
 
-  if (c.vendors.length > 0) lines.push(`Sebut tempat/barang: ${c.vendors.join(", ")}`);
+  if (c.vendors.length > 0) {
+    lines.push(
+      `Sebut tempat/barang dengan nama alami (pilih salah satu frasa, JANGAN tulis id bertanda underscore): ${vendorPromptLabels(c.vendors)}`,
+    );
+  }
 
   return { system, user: lines.join("\n") };
 }
@@ -289,30 +315,30 @@ function aspectBrief(aspect: string, nMasuk: number, nKeluar: number): string {
       ord_rail_named: "yang menyebut cara bayar/terimanya",
       ord_date_relative: "dengan keterangan waktu relatif",
       ord_no_date: "tanpa keterangan waktu sama sekali",
-      ord_wa_wrapper: "dibungkus basa-basi WhatsApp ('catat ya:', salam, emoji)",
+      ord_wa_wrapper: "dibungkus basa-basi singkat ke bot ('catat ya', emoji)",
       not_dot_separator: "dengan nominal bertitik ribuan",
       not_k_suffix_decimal: "dengan nominal berakhiran k, ada desimalnya",
       not_slang_hokkien: "dengan nominal memakai slang (ceban/goceng/gopek)",
       reg_regional_lexicon: "dengan kosakata khas daerah",
       noi_typo_heavy: "ditulis dengan banyak typo",
-      noi_voice_rambling: "dari transkrip suara yang bertele-tele",
+      noi_voice_rambling: "dari voice-to-text yang bertele-tele ke bot",
     };
     return `${generic} ${flavour[aspect] ?? ""}`.trim();
   }
 
   const briefs: Record<string, string> = {
-    ord_single_out: "satu pengeluaran biasa sehari-hari",
-    ord_single_in: "satu pemasukan biasa (uang masuk)",
-    ord_multi_out: "dua atau lebih pengeluaran dalam satu pesan",
-    ord_rekap_list: "rekap beberapa pengeluaran dalam bentuk daftar",
+    ord_single_out: "satu pengeluaran biasa yang baru terjadi — submit ke bot pencatat",
+    ord_single_in: "satu pemasukan biasa (uang MASUK) — submit ke bot pencatat",
+    ord_multi_out: "dua atau lebih pengeluaran dalam satu submit ke bot",
+    ord_rekap_list: "rekap beberapa pengeluaran dalam bentuk daftar singkat ke bot",
     ord_vendor_named: "pengeluaran di sebuah toko/tempat yang disebut namanya",
     ord_rail_named: "pengeluaran yang menyebut cara bayarnya",
     ord_recurring_bill: "bayar tagihan rutin (listrik/wifi/kos/spp/bpjs)",
-    ord_topup_ewallet: "top up e-wallet — ini PENGELUARAN, bukan pemasukan",
+    ord_topup_ewallet: "top up e-wallet (arah uang: keluar/pindah saldo — jangan tulis meta-label di teks)",
     ord_date_relative: "pengeluaran dengan keterangan waktu relatif",
     ord_no_date: "pengeluaran tanpa keterangan waktu sama sekali",
     ord_qty_simple: "beli beberapa buah barang yang sama",
-    ord_wa_wrapper: "pengeluaran dibungkus basa-basi WhatsApp ('catat ya:', salam, emoji)",
+    ord_wa_wrapper: "pengeluaran dibungkus basa-basi singkat ke bot ('catat ya', emoji)",
     not_dot_separator: "pengeluaran dengan nominal bertitik ribuan",
     not_k_suffix_decimal: "pengeluaran dengan nominal berakhiran k, ada desimalnya",
     not_spelled_amount: "pengeluaran dengan nominal ditulis huruf",
@@ -320,17 +346,17 @@ function aspectBrief(aspect: string, nMasuk: number, nKeluar: number): string {
     not_regional_numeral: "pengeluaran dengan nominal memakai angka bahasa daerah",
     reg_regional_lexicon: "pengeluaran dengan kosakata khas daerah",
     noi_typo_heavy: "pengeluaran ditulis dengan banyak typo",
-    noi_voice_rambling: "pengeluaran dari transkrip suara yang bertele-tele",
+    noi_voice_rambling: "pengeluaran dari voice-to-text yang bertele-tele ke bot",
     dir_income_gaji: "gaji/honor/THR cair — uang MASUK",
     dir_income_refund_cashback: "refund atau cashback diterima — uang MASUK",
     dir_income_transfer_masuk: "ada transfer masuk ke rekening — uang MASUK",
-    dir_mixed_message: "satu pesan berisi uang masuk DAN uang keluar sekaligus",
+    dir_mixed_message: "satu submit berisi uang masuk DAN uang keluar sekaligus",
     dir_lexical_trap: "transaksi yang kata kerjanya bisa menyesatkan arah uangnya (utang/piutang, dibayar/membayar)",
-    dir_topup_not_income: "top up saldo — uang PINDAH, jelas bukan pemasukan",
-    ntx_curhat: "curhat/keluhan soal uang — TIDAK ada transaksi yang sudah terjadi",
-    ntx_future_intent: "rencana beli di masa depan — belum terjadi, jangan dicatat",
-    ntx_cancelled: "pembelian yang dibatalkan — jangan dicatat",
-    ntx_query: "pertanyaan ke aplikasi soal pengeluaran, bukan pencatatan",
+    dir_topup_not_income: "top up saldo (uang pindah) — sebut top up/isi saldo secara alami, tanpa meta-label",
+    ntx_curhat: "curhat/keluhan soal uang ke bot — TIDAK ada transaksi yang sudah terjadi",
+    ntx_future_intent: "rencana beli di masa depan dikirim ke bot — belum terjadi, minta jangan dicatat",
+    ntx_cancelled: "pembelian dibatalkan — minta bot jangan mencatat",
+    ntx_query: "pertanyaan ke bot soal pengeluaran, bukan pencatatan transaksi baru",
     adv_correction_amount: "pengeluaran yang nominalnya diralat di tengah kalimat",
     adv_correction_magnitude: "pengeluaran yang satuannya diralat (ribu vs juta)",
     adv_price_copy_bait: "beberapa barang dengan harga berbeda-beda yang gampang tertukar",
