@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 276" width="960" height="276">
+  <style>
+    .title { font: 600 18px system-ui, sans-serif; fill: #0f172a; }
+    .label { font: 14px system-ui, sans-serif; fill: #334155; }
+    .value { font: 14px system-ui, sans-serif; fill: #475569; }
+    .sub { font: 12px system-ui, sans-serif; fill: #64748b; }
+  </style>
+  <rect width="100%" height="100%" fill="#fafafa"/>
+  <text x="16" y="28" class="title">Parse-25 — strict pass</text>
+  <text x="16" y="46" class="sub">Pass / 25 adversarial scenarios · higher is better</text>
+  
+    <text x="8" y="77.92" class="label">qwen3-4b-2507</text>
+    <rect x="220" y="52" width="441.6" height="36" rx="4" fill="#2563eb"/>
+    <text x="780" y="77.92" class="value">20/25</text>
+    <text x="8" y="125.92" class="label">nemotron-3-nano-4b</text>
+    <rect x="220" y="100" width="287.04" height="36" rx="4" fill="#16a34a"/>
+    <text x="780" y="125.92" class="value">13/25</text>
+    <text x="8" y="173.92" class="label">qwen3-1.7b</text>
+    <rect x="220" y="148" width="154.56" height="36" rx="4" fill="#dc2626"/>
+    <text x="780" y="173.92" class="value">7/25</text>
+    <text x="8" y="221.92" class="label">lfm2.5-1.2b</text>
+    <rect x="220" y="196" width="4" height="36" rx="4" fill="#9333ea"/>
+    <text x="780" y="221.92" class="value">0/25</text>
+</svg>

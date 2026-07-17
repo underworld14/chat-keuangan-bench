@@ -1,0 +1,178 @@
+{
+  "kind": "parse-base",
+  "suite": "base",
+  "runAt": "2026-07-17T03:58:12.136Z",
+  "modelId": "qwen/qwen3-1.7b",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "passCount": 11,
+  "total": 28,
+  "meanMs": 12792.67857142857,
+  "byStyle": {
+    "casual_slang": {
+      "pass": 0,
+      "total": 3
+    },
+    "income": {
+      "pass": 2,
+      "total": 4
+    },
+    "whatsapp_short": {
+      "pass": 0,
+      "total": 2
+    },
+    "typo_slang": {
+      "pass": 0,
+      "total": 1
+    },
+    "ambiguous_amount": {
+      "pass": 0,
+      "total": 3
+    },
+    "multi_entry": {
+      "pass": 0,
+      "total": 2
+    },
+    "formal_dictation": {
+      "pass": 4,
+      "total": 4
+    },
+    "non_transaction": {
+      "pass": 2,
+      "total": 2
+    },
+    "pesantren": {
+      "pass": 1,
+      "total": 4
+    },
+    "split_bill": {
+      "pass": 0,
+      "total": 1
+    },
+    "bulk_list": {
+      "pass": 1,
+      "total": 1
+    },
+    "future_intent": {
+      "pass": 1,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "user-example-maren-bakmi",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "bensin-parkir-mall",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "wa-catat-nasi-padang",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 25000 [nasi,padang]",
+        "extra entries: pemasukan 25000 \"terima nasi padang\""
+      ]
+    },
+    {
+      "id": "martabak-slang",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 15000 [martabak]",
+        "extra entries: pengeluaran 15000 \"pembelian makanan martabak 15,000 Rp\""
+      ]
+    },
+    {
+      "id": "belanja-bulanan-800an",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 800000 [belanja]",
+        "extra entries: pengeluaran 800 \"pengeluaran bulanan sebesar 800 an\""
+      ]
+    },
+    {
+      "id": "transfer-ortu-buku",
+      "issues": [
+        "missing/unmatched expected: pemasukan 500000 [transfer]",
+        "missing/unmatched expected: pengeluaran 80000 [buku]",
+        "extra entries: pemasukan 5000000 \"terima transfer 500rb dari ortu\"; pengeluaran 8000000 \"beli buku 80rb\""
+      ]
+    },
+    {
+      "id": "split-bill-makan",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "sembako-dapur-pesantren",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 3200000 [sembako]",
+        "extra entries: pengeluaran 3200000 \"beli sembako dapur pesantren\""
+      ]
+    },
+    {
+      "id": "shopee-cod-2-item",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "gopay-topup-100k",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 100000 [gopay,top]",
+        "extra entries: pemasukan 1000000 \"top up gopay 100k\""
+      ]
+    },
+    {
+      "id": "thr-diterima",
+      "issues": [
+        "missing/unmatched expected: pemasukan 1800000 [thr]",
+        "extra entries: pemasukan 1800000 \"dapat uang 1,8 juta masuk rekening\""
+      ]
+    },
+    {
+      "id": "warung-ga-ingat-harga",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "ojek-15rb-atau-50rb-typo",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "mixed-income-expense-santri",
+      "issues": [
+        "missing/unmatched expected: pemasukan 750000 [setoran]",
+        "missing/unmatched expected: pengeluaran 120000 [buku]",
+        "extra entries: pemasukan 750 \"terima setoran wali Ahmad 750rb\"; pengeluaran 120 \"beli buku pelajaran 120rb\""
+      ]
+    },
+    {
+      "id": "voice-rambling-pulsa",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 50000 [pulsa]",
+        "missing/unmatched expected: pengeluaran 25000 [kuota]",
+        "extra entries: pengeluaran 50000 \"Beli pulsa 50 ribu\"; pengeluaran 25000 \"Kuota 25 ribu\""
+      ]
+    },
+    {
+      "id": "refund-marketplace",
+      "issues": [
+        "missing/unmatched expected: pemasukan 89000 [refund]",
+        "extra entries: pemasukan 89000 \"Diterima dari Tokopedia sebesar 89rb\""
+      ]
+    },
+    {
+      "id": "zakat-fitrah-keluarga",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 180000 [zakat]",
+        "extra entries: pengeluaran 1800000 \"pembayaran zakat fitrah untuk 4 orang\""
+      ]
+    }
+  ]
+}

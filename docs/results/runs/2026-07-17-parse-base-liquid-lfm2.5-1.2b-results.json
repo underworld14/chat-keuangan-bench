@@ -1,0 +1,273 @@
+{
+  "kind": "parse-base",
+  "suite": "base",
+  "runAt": "2026-07-17T04:27:05.445Z",
+  "modelId": "liquid/lfm2.5-1.2b",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "passCount": 0,
+  "total": 28,
+  "meanMs": 3634.5714285714284,
+  "byStyle": {
+    "casual_slang": {
+      "pass": 0,
+      "total": 3
+    },
+    "income": {
+      "pass": 0,
+      "total": 4
+    },
+    "whatsapp_short": {
+      "pass": 0,
+      "total": 2
+    },
+    "typo_slang": {
+      "pass": 0,
+      "total": 1
+    },
+    "ambiguous_amount": {
+      "pass": 0,
+      "total": 3
+    },
+    "multi_entry": {
+      "pass": 0,
+      "total": 2
+    },
+    "formal_dictation": {
+      "pass": 0,
+      "total": 4
+    },
+    "non_transaction": {
+      "pass": 0,
+      "total": 2
+    },
+    "pesantren": {
+      "pass": 0,
+      "total": 4
+    },
+    "split_bill": {
+      "pass": 0,
+      "total": 1
+    },
+    "bulk_list": {
+      "pass": 0,
+      "total": 1
+    },
+    "future_intent": {
+      "pass": 0,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "user-example-maren-bakmi",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 12000 [sarden]",
+        "missing/unmatched expected: pengeluaran 12000 [bakmi]",
+        "missing/unmatched expected: pengeluaran 12000 [bakmi]",
+        "extra entries: pengeluaran 12000 \"\"; pengeluaran 12000 \"\""
+      ]
+    },
+    {
+      "id": "bensin-parkir-mall",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "gaji-4-5jt",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pemasukan 4500000 [gaji]",
+        "extra entries: pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\""
+      ]
+    },
+    {
+      "id": "donasi-renovasi",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pemasukan 2000000 [donasi]",
+        "extra entries: pengeluaran 2000000 \"Banyak orang membeli untuk renovasi masjid\""
+      ]
+    },
+    {
+      "id": "wa-catat-nasi-padang",
+      "issues": [
+        "JSON Parse error: Unterminated string"
+      ]
+    },
+    {
+      "id": "martabak-slang",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 15000 [martabak]",
+        "extra entries: pengeluaran 15000 \"\""
+      ]
+    },
+    {
+      "id": "belanja-bulanan-800an",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 800000 [belanja]",
+        "extra entries: pengeluaran 0 \"\"; pemasukan 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 8000 \"\""
+      ]
+    },
+    {
+      "id": "transfer-ortu-buku",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pemasukan 500000 [transfer]",
+        "missing/unmatched expected: pengeluaran 80000 [buku]",
+        "extra entries: pengeluaran 500 \"Transfer 500rb dari ortu ke keputera\"; pengeluaran 80 \"Beli buku dengan kesempatan 80rb\""
+      ]
+    },
+    {
+      "id": "atk-gojek-parkir-formal",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 350000 [atk]",
+        "missing/unmatched expected: pengeluaran 25000 [gojek,ongkir]",
+        "missing/unmatched expected: pengeluaran 5000 [parkir]",
+        "extra entries: pengeluaran 640000 \"\"; pengeluaran 640000 \"\"; pengeluaran 640000 \"\"; pengeluaran 640000 \"\"; pengeluaran 640000 \"\"; pengeluaran 25000 \"\"; pengeluaran 5000 \"\""
+      ]
+    },
+    {
+      "id": "curhat-bukan-transaksi",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "infaq-jumat",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 50000 [infaq]",
+        "extra entries: pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\""
+      ]
+    },
+    {
+      "id": "split-bill-makan",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 30000 [makan]",
+        "extra entries: pengeluaran 30 \"\"; pengeluaran 30 \"\"; pengeluaran 30 \"\"; pengeluaran 30 \"\""
+      ]
+    },
+    {
+      "id": "bulk-wa-list",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 87500 [indomaret]",
+        "missing/unmatched expected: pengeluaran 18000 [gojek]",
+        "missing/unmatched expected: pengeluaran 35000 [kopi]",
+        "extra entries: pengeluaran 30000 \"\"; pengeluaran 640000 \"\"; pengeluaran 30000 \"\"; pengeluaran 30000 \"\"; pengeluaran 30000 \"\"; pengeluaran 30000 \"\"; pengeluaran 87500 \"\"; pengeluaran 35000 \"\""
+      ]
+    },
+    {
+      "id": "listrik-500rb",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 500000 [listrik]",
+        "extra entries: pengeluaran 50000 \"\"; pengeluaran 1500000 \"\"; pengeluaran 23000 \"\""
+      ]
+    },
+    {
+      "id": "ukt-1-25jt",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 1250000 [ukt]",
+        "extra entries: pengeluaran 1250000 \"\"; pengeluaran 12000 \"\"; pemasukan 12000 \"\""
+      ]
+    },
+    {
+      "id": "spp-besok-belum",
+      "issues": [
+        "expected 0 entries, got 5"
+      ]
+    },
+    {
+      "id": "sembako-dapur-pesantren",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 3200000 [sembako]",
+        "extra entries: pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 0 \"\""
+      ]
+    },
+    {
+      "id": "shopee-cod-2-item",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 45000 [case,hp]",
+        "missing/unmatched expected: pengeluaran 25000 [kabel]",
+        "extra entries: pengeluaran 0 \"\"; pengeluaran 0 \"\"; pengeluaran 64000 \"\"; pengeluaran 23000 \"\""
+      ]
+    },
+    {
+      "id": "gopay-topup-100k",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 100000 [gopay,top]",
+        "extra entries: pengeluaran 100000 \"\""
+      ]
+    },
+    {
+      "id": "thr-diterima",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "warung-ga-ingat-harga",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "salam-doang",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "ojek-15rb-atau-50rb-typo",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "catat-pengeluaran-formal-wafi",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 200000 [atk]",
+        "extra entries: pengeluaran 640000 \"\"; pengeluaran 1300000 \"\"; pemasukan 640000 \"\""
+      ]
+    },
+    {
+      "id": "mixed-income-expense-santri",
+      "issues": [
+        "missing/unmatched expected: pemasukan 750000 [setoran]",
+        "missing/unmatched expected: pengeluaran 120000 [buku]",
+        "extra entries: pengeluaran 640000 \"\"; pengeluaran 90000 \"\"; pengeluaran 640000 \"\"; pengeluaran 1 \"\"; pengeluaran 1 \"\"; pengeluaran 1 \"\"; pengeluaran 1 \"\"; pengeluaran 640000 \"\"; pengeluaran 640000 \"\""
+      ]
+    },
+    {
+      "id": "voice-rambling-pulsa",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "refund-marketplace",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "zakat-fitrah-keluarga",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 180000 [zakat]",
+        "extra entries: pengeluaran 4 \"\""
+      ]
+    }
+  ]
+}

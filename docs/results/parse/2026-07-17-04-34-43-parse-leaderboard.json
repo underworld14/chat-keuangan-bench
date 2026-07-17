@@ -1,0 +1,39 @@
+{
+  "bench": "Parse",
+  "version": "1.0.0",
+  "generatedAt": "2026-07-17T04:34:43.184Z",
+  "ranking": "hardStrict desc → hardComposite desc → basePass desc → latency asc",
+  "metrics": {
+    "base": "strict pass / 28 everyday scenarios",
+    "hardStrict": "strict pass / 25 Parse-25 scenarios",
+    "hardComposite": "mean quality composite 0–100 from hard-25 harness"
+  },
+  "leaderboard": [
+    {
+      "rank": 1,
+      "modelId": "qwen/qwen3-1.7b",
+      "basePass": 11,
+      "baseTotal": 28,
+      "baseMeanMs": 12792.67857142857,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-qwen-qwen3-1.7b-results.json",
+      "hardStrict": 7,
+      "hardTotal": 25,
+      "hardComposite": 82.7,
+      "hardMeanMs": 25051.736842105263,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-qwen-qwen3-1.7b-eval-parse-results.json"
+    },
+    {
+      "rank": 2,
+      "modelId": "liquid/lfm2.5-1.2b",
+      "basePass": 0,
+      "baseTotal": 28,
+      "baseMeanMs": 3634.5714285714284,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-liquid-lfm2.5-1.2b-results.json",
+      "hardStrict": 0,
+      "hardTotal": 25,
+      "hardComposite": 24.7,
+      "hardMeanMs": 11276.470588235294,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-liquid-lfm2.5-1.2b-eval-parse-results.json"
+    }
+  ]
+}
