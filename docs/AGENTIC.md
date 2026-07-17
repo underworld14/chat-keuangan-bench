@@ -14,6 +14,14 @@ bun run studio   # http://localhost:4111
 
 Set `JUDGE_MODEL` in `.env` when not using `--skip-judge` (same local server).
 
+## The one cloud dependency
+
+Every **model** call is local, but the agent's `firecrawl_search` / `firecrawl_scrape` tools call
+`api.firecrawl.dev` and need `FIRECRAWL_API_KEY` in `.env`. They exist for web lookups only — the
+agent is instructed never to use them to find receipt images. Scenarios that don't exercise those
+tools run fully offline; leave the key unset and those tool calls fail closed rather than silently
+reaching the network.
+
 ## Score (public v1)
 
 ```text
