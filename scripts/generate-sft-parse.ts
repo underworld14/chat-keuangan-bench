@@ -92,7 +92,7 @@ function parseArgs(argv: string[]): Args {
     resume: false,
     overwrite: false,
     textTemperature: 0.9,
-    concurrency: 2,
+    concurrency: 4,
     attemptMultiplier: 3,
     systemPromptMode: "mix",
     minSuccessRate: 0.8,

@@ -109,7 +109,7 @@ bun run generate:sft-parse -- --model <teacher-id> --count 2000
 > junk labels.
 
 Useful flags: `--seed <n>` (reproducible; same seed + same teacher → same corpus) ·
-`--concurrency <n>` (default 2 — LM Studio is GPU-bound, more mostly queues) · `--resume` ·
+`--concurrency <n>` (default 4; lower to 1–2 for local LM Studio) · `--resume` ·
 `--overwrite` · `--system-prompt-mode full|short|none|mix` · `--min-success-rate <0-1>`
 
 **After the pilot, read the manifest** (`docs/results/sft/sft-parse-manifest-latest.json`):
