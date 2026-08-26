@@ -101,7 +101,12 @@ export type RejectPhase =
   | "label:trace"
   | "label:dropped-entry"
   | "agreement"
-  | "dedup";
+  | "dedup"
+  | "batch:missing"
+  | "batch:duplicate"
+  | "batch:text-json"
+  | "batch:text-schema"
+  | "label:validate";
 
 export class RejectError extends Error {
   constructor(
@@ -114,15 +119,29 @@ export class RejectError extends Error {
   }
 }
 
-/** Every label amount must be justified by the text. Catches hallucinated amounts. */
+/**
+ * Every label amount must be justified by the text. Catches hallucinated amounts.
+ *
+ * `traceableByConstruction` carries amounts the SPEC itself declares correct although the text
+ * cannot contain them — a qty cell's merged total, which the prompt explicitly forbids writing.
+ * Those are compliance, not invention; without it this gate fires before the agreement check
+ * and rejects a label the spec had offered as an alternative.
+ */
 export function guardTrace(
   label: ParsedFinance,
   atoms: AmountAtom[],
+  traceableByConstruction: ReadonlySet<number> = new Set(),
 ): { tiers: TraceTier[] } {
   const tiers: TraceTier[] = [];
   for (const e of label.entries) {
     const t = traceAmount(e.jumlah, atoms);
     if (t.tier === "none") {
+      // Not "direct": the amount is justified by the spec's arithmetic, not by a token in the
+      // text, and the manifest's tier histogram should keep saying so.
+      if (traceableByConstruction.has(e.jumlah)) {
+        tiers.push("derived");
+        continue;
+      }
       throw new RejectError(
         "label:trace",
         `jumlah ${e.jumlah} ("${e.deskripsi}") is not traceable to the text`,
@@ -273,6 +292,8 @@ export function validateRow(args: {
   shape?: RowShape;
   /** Amounts the spec ordered into the text but deliberately did not book. */
   excusedByConstruction?: ReadonlySet<number>;
+  /** Amounts the spec declares correct though the text cannot state them — see guardTrace. */
+  traceableByConstruction?: ReadonlySet<number>;
 }): { atoms: AmountAtom[]; traceTiers: TraceTier[] } {
   const atoms = tokenizeAmounts(args.text);
   guardAmbiguousText(atoms);
@@ -282,7 +303,7 @@ export function validateRow(args: {
     throw new RejectError("label:schema", "label failed strict validation", parsed.error.issues);
   }
 
-  const { tiers } = guardTrace(args.label, atoms);
+  const { tiers } = guardTrace(args.label, atoms, args.traceableByConstruction);
   guardDroppedEntries(args.text, atoms, args.label, args.excusedByConstruction);
 
   const agree = compareLabelToSpec(args.label, args.spec);

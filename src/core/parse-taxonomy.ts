@@ -158,6 +158,10 @@ function bandsOverlap(a: readonly [number, number], b: readonly [number, number]
   return a[0] < b[1] && b[0] < a[1];
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Self-checking cell primitives
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,6 +199,14 @@ export interface Vendor {
   registers: Register[];
   urbanity: "urban" | "suburban" | "rural" | "any";
   defaultRails: Rail[];
+  /**
+   * Which way money can flow at this vendor. Carrier axes "must NOT change the parse" (see the
+   * module header), but a vendor name is lexically direction-loaded: no Indonesian sentence
+   * books `infaq masjid` as money coming IN, so pairing it with an `in` cell orders a text that
+   * cannot exist. `any` is reserved for vendors a refund/cashback can plausibly come from —
+   * that is the whole point of dir_income_refund_cashback, so the guard must let it through.
+   */
+  polarity: "out" | "in" | "any";
 }
 
 export interface Cell {
@@ -236,56 +248,56 @@ const ANY_REG: Register[] = [
 
 export const VENDORS: readonly Vendor[] = [
   // ── ritel / urban ──
-  { id: "indomaret", surfaces: ["indomaret", "indom", "indomart"], kategori: "belanja_harian", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["tunai", "qris", "kartu"] },
-  { id: "alfamart", surfaces: ["alfamart", "alfa"], kategori: "belanja_harian", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["tunai", "qris"] },
-  { id: "warung_madura", surfaces: ["warung madura", "warmad", "warung pak madura"], kategori: "belanja_harian", typicalRange: [2_000, 100_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] },
-  { id: "tokopedia", surfaces: ["tokopedia", "tokped"], kategori: "belanja_online", typicalRange: [15_000, 5_000_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa", "sunda", "medan"], urbanity: "any", defaultRails: ["transfer_bank", "ewallet", "cod"] },
-  { id: "shopee", surfaces: ["shopee", "spi"], kategori: "belanja_online", typicalRange: [10_000, 3_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["ewallet", "cod", "transfer_bank"] },
-  { id: "mixue", surfaces: ["mixue"], kategori: "jajan", typicalRange: [8_000, 60_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa", "sunda", "medan"], urbanity: "urban", defaultRails: ["tunai", "qris"] },
-  { id: "kopi_kenangan", surfaces: ["kopi kenangan", "kenangan"], kategori: "jajan", typicalRange: [15_000, 90_000], registers: ["jaksel_gaul", "baku", "betawi"], urbanity: "urban", defaultRails: ["qris", "ewallet"] },
-  { id: "minimarket_lokal", surfaces: ["minimarket", "toko sebelah"], kategori: "belanja_harian", typicalRange: [3_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] },
+  { id: "indomaret", surfaces: ["indomaret", "indom", "indomart"], kategori: "belanja_harian", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["tunai", "qris", "kartu"] , polarity: "any" },
+  { id: "alfamart", surfaces: ["alfamart", "alfa"], kategori: "belanja_harian", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["tunai", "qris"] , polarity: "any" },
+  { id: "warung_madura", surfaces: ["warung madura", "warmad", "warung pak madura"], kategori: "belanja_harian", typicalRange: [2_000, 100_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "any" },
+  { id: "tokopedia", surfaces: ["tokopedia", "tokped"], kategori: "belanja_online", typicalRange: [15_000, 5_000_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa", "sunda", "medan"], urbanity: "any", defaultRails: ["transfer_bank", "ewallet", "cod"] , polarity: "any" },
+  { id: "shopee", surfaces: ["shopee", "spi"], kategori: "belanja_online", typicalRange: [10_000, 3_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["ewallet", "cod", "transfer_bank"] , polarity: "any" },
+  { id: "mixue", surfaces: ["mixue"], kategori: "jajan", typicalRange: [8_000, 60_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa", "sunda", "medan"], urbanity: "urban", defaultRails: ["tunai", "qris"] , polarity: "any" },
+  { id: "kopi_kenangan", surfaces: ["kopi kenangan", "kenangan"], kategori: "jajan", typicalRange: [15_000, 90_000], registers: ["jaksel_gaul", "baku", "betawi"], urbanity: "urban", defaultRails: ["qris", "ewallet"] , polarity: "any" },
+  { id: "minimarket_lokal", surfaces: ["minimarket", "toko sebelah"], kategori: "belanja_harian", typicalRange: [3_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "any" },
 
   // ── transport / fuel ──
-  { id: "grab", surfaces: ["grab", "grabbike", "grabcar"], kategori: "transport", typicalRange: [8_000, 200_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["ewallet", "tunai"] },
-  { id: "gojek", surfaces: ["gojek", "gocar", "goride", "ojol"], kategori: "transport", typicalRange: [8_000, 200_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["ewallet", "tunai"] },
-  { id: "spbu_pertamina", surfaces: ["spbu", "pertamina", "pom bensin", "pertalite"], kategori: "transport", typicalRange: [20_000, 500_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris", "emoney"] },
-  { id: "krl", surfaces: ["krl", "commuter", "commuter line"], kategori: "transport", typicalRange: [3_000, 30_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa", "sunda"], urbanity: "urban", defaultRails: ["emoney"] },
-  { id: "ojek_pangkalan", surfaces: ["ojek pangkalan", "opang", "ojek"], kategori: "transport", typicalRange: [5_000, 80_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
-  { id: "angkot", surfaces: ["angkot", "angkutan"], kategori: "transport", typicalRange: [2_000, 20_000], registers: ["jawa", "sunda", "betawi", "baku", "medan", "minang"], urbanity: "suburban", defaultRails: ["tunai"] },
-  { id: "parkir", surfaces: ["parkir", "karcis parkir"], kategori: "transport", typicalRange: [1_000, 30_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "emoney"] },
-  { id: "tol", surfaces: ["tol", "e-toll", "gerbang tol"], kategori: "transport", typicalRange: [5_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["emoney"] },
+  { id: "grab", surfaces: ["grab", "grabbike", "grabcar"], kategori: "transport", typicalRange: [8_000, 200_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["ewallet", "tunai"] , polarity: "any" },
+  { id: "gojek", surfaces: ["gojek", "gocar", "goride", "ojol"], kategori: "transport", typicalRange: [8_000, 200_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["ewallet", "tunai"] , polarity: "any" },
+  { id: "spbu_pertamina", surfaces: ["spbu", "pertamina", "pom bensin", "pertalite"], kategori: "transport", typicalRange: [20_000, 500_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris", "emoney"] , polarity: "out" },
+  { id: "krl", surfaces: ["krl", "commuter", "commuter line"], kategori: "transport", typicalRange: [3_000, 30_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa", "sunda"], urbanity: "urban", defaultRails: ["emoney"] , polarity: "out" },
+  { id: "ojek_pangkalan", surfaces: ["ojek pangkalan", "opang", "ojek"], kategori: "transport", typicalRange: [5_000, 80_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "angkot", surfaces: ["angkot", "angkutan"], kategori: "transport", typicalRange: [2_000, 20_000], registers: ["jawa", "sunda", "betawi", "baku", "medan", "minang"], urbanity: "suburban", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "parkir", surfaces: ["parkir", "karcis parkir"], kategori: "transport", typicalRange: [1_000, 30_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "emoney"] , polarity: "out" },
+  { id: "tol", surfaces: ["tol", "e-toll", "gerbang tol"], kategori: "transport", typicalRange: [5_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["emoney"] , polarity: "out" },
 
   // ── makan ──
-  { id: "warung", surfaces: ["warung", "warung nasi"], kategori: "makan", typicalRange: [3_000, 120_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
-  { id: "warteg", surfaces: ["warteg", "warung tegal"], kategori: "makan", typicalRange: [5_000, 80_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa"], urbanity: "any", defaultRails: ["tunai", "qris"] },
-  { id: "angkringan", surfaces: ["angkringan", "hik"], kategori: "makan", typicalRange: [2_000, 60_000], registers: ["jawa", "baku"], urbanity: "any", defaultRails: ["tunai"] },
-  { id: "kantin", surfaces: ["kantin", "kantin sekolah", "kantin kampus"], kategori: "makan", typicalRange: [3_000, 60_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
-  { id: "gofood", surfaces: ["gofood", "go food"], kategori: "makan", typicalRange: [15_000, 300_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["ewallet"] },
-  { id: "nasi_padang", surfaces: ["nasi padang", "rm padang", "rumah makan padang"], kategori: "makan", typicalRange: [10_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] },
-  { id: "bakso", surfaces: ["bakso", "bakso urat"], kategori: "makan", typicalRange: [5_000, 60_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
+  { id: "warung", surfaces: ["warung", "warung nasi"], kategori: "makan", typicalRange: [3_000, 120_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "warteg", surfaces: ["warteg", "warung tegal"], kategori: "makan", typicalRange: [5_000, 80_000], registers: ["jaksel_gaul", "baku", "betawi", "jawa"], urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "out" },
+  { id: "angkringan", surfaces: ["angkringan", "hik"], kategori: "makan", typicalRange: [2_000, 60_000], registers: ["jawa", "baku"], urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "kantin", surfaces: ["kantin", "kantin sekolah", "kantin kampus"], kategori: "makan", typicalRange: [3_000, 60_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "gofood", surfaces: ["gofood", "go food"], kategori: "makan", typicalRange: [15_000, 300_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["ewallet"] , polarity: "out" },
+  { id: "nasi_padang", surfaces: ["nasi padang", "rm padang", "rumah makan padang"], kategori: "makan", typicalRange: [10_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "out" },
+  { id: "bakso", surfaces: ["bakso", "bakso urat"], kategori: "makan", typicalRange: [5_000, 60_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
 
   // ── rural / jasa ──
-  { id: "pasar_tradisional", surfaces: ["pasar", "pasar tradisional"], kategori: "belanja_harian", typicalRange: [5_000, 500_000], registers: ANY_REG, urbanity: "rural", defaultRails: ["tunai"] },
-  { id: "tukang_sayur", surfaces: ["tukang sayur", "mang sayur", "abang sayur"], kategori: "belanja_harian", typicalRange: [3_000, 100_000], registers: ["jawa", "sunda", "betawi", "baku"], urbanity: "suburban", defaultRails: ["tunai"] },
-  { id: "bengkel", surfaces: ["bengkel", "bengkel motor"], kategori: "jasa", typicalRange: [15_000, 2_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] },
-  { id: "tambal_ban", surfaces: ["tambal ban", "tukang tambal ban"], kategori: "jasa", typicalRange: [5_000, 50_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
-  { id: "laundry", surfaces: ["laundry", "londri", "laundry kiloan"], kategori: "jasa", typicalRange: [5_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] },
-  { id: "apotik", surfaces: ["apotik", "apotek", "kimia farma"], kategori: "kesehatan", typicalRange: [5_000, 500_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris", "kartu"] },
-  { id: "puskesmas", surfaces: ["puskesmas", "klinik"], kategori: "kesehatan", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
-  { id: "barbershop", surfaces: ["barbershop", "pangkas rambut", "cukur"], kategori: "jasa", typicalRange: [10_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] },
-  { id: "fotokopi", surfaces: ["fotokopi", "fotocopy", "tukang fotokopi"], kategori: "jasa", typicalRange: [1_000, 80_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
+  { id: "pasar_tradisional", surfaces: ["pasar", "pasar tradisional"], kategori: "belanja_harian", typicalRange: [5_000, 500_000], registers: ANY_REG, urbanity: "rural", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "tukang_sayur", surfaces: ["tukang sayur", "mang sayur", "abang sayur"], kategori: "belanja_harian", typicalRange: [3_000, 100_000], registers: ["jawa", "sunda", "betawi", "baku"], urbanity: "suburban", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "bengkel", surfaces: ["bengkel", "bengkel motor"], kategori: "jasa", typicalRange: [15_000, 2_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "out" },
+  { id: "tambal_ban", surfaces: ["tambal ban", "tukang tambal ban"], kategori: "jasa", typicalRange: [5_000, 50_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "laundry", surfaces: ["laundry", "londri", "laundry kiloan"], kategori: "jasa", typicalRange: [5_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "out" },
+  { id: "apotik", surfaces: ["apotik", "apotek", "kimia farma"], kategori: "kesehatan", typicalRange: [5_000, 500_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris", "kartu"] , polarity: "out" },
+  { id: "puskesmas", surfaces: ["puskesmas", "klinik"], kategori: "kesehatan", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
+  { id: "barbershop", surfaces: ["barbershop", "pangkas rambut", "cukur"], kategori: "jasa", typicalRange: [10_000, 150_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai", "qris"] , polarity: "out" },
+  { id: "fotokopi", surfaces: ["fotokopi", "fotocopy", "tukang fotokopi"], kategori: "jasa", typicalRange: [1_000, 80_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
 
   // ── tagihan / institusi ──
-  { id: "pln_token", surfaces: ["token listrik", "pln", "listrik"], kategori: "tagihan", typicalRange: [20_000, 1_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["ewallet", "transfer_bank", "tunai"] },
-  { id: "pdam", surfaces: ["pdam", "air pdam", "tagihan air"], kategori: "tagihan", typicalRange: [20_000, 500_000], registers: ANY_REG, urbanity: "any", defaultRails: ["transfer_bank", "ewallet"] },
-  { id: "telkomsel_pulsa", surfaces: ["pulsa", "telkomsel", "pulsa telkomsel"], kategori: "tagihan", typicalRange: [5_000, 200_000], registers: ANY_REG, urbanity: "any", defaultRails: ["pulsa", "ewallet", "tunai"] },
-  { id: "indihome", surfaces: ["indihome", "wifi", "tagihan wifi"], kategori: "tagihan", typicalRange: [200_000, 900_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["transfer_bank", "ewallet"] },
-  { id: "bpjs", surfaces: ["bpjs", "iuran bpjs"], kategori: "tagihan", typicalRange: [35_000, 600_000], registers: ANY_REG, urbanity: "any", defaultRails: ["transfer_bank", "ewallet"] },
-  { id: "kos", surfaces: ["kos", "kosan", "sewa kos"], kategori: "tempat_tinggal", typicalRange: [400_000, 4_000_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["transfer_bank", "tunai"] },
-  { id: "spp_sekolah", surfaces: ["spp", "spp sekolah", "uang sekolah"], kategori: "pendidikan", typicalRange: [100_000, 3_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["transfer_bank", "tunai"] },
-  { id: "pesantren_syahriah", surfaces: ["syahriah", "syahriyah", "iuran pondok"], kategori: "pendidikan", typicalRange: [150_000, 2_500_000], registers: ["pesantren", "baku", "jawa"], urbanity: "any", defaultRails: ["transfer_bank", "tunai"] },
-  { id: "masjid_infaq", surfaces: ["infaq masjid", "kotak amal", "infaq"], kategori: "sosial", typicalRange: [2_000, 500_000], registers: ["pesantren", "baku", "jawa", "betawi", "sunda", "minang"], urbanity: "any", defaultRails: ["tunai", "transfer_bank"] },
-  { id: "iuran_warga", surfaces: ["iuran warga", "iuran rt", "kas rt"], kategori: "sosial", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] },
+  { id: "pln_token", surfaces: ["token listrik", "pln", "listrik"], kategori: "tagihan", typicalRange: [20_000, 1_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["ewallet", "transfer_bank", "tunai"] , polarity: "out" },
+  { id: "pdam", surfaces: ["pdam", "air pdam", "tagihan air"], kategori: "tagihan", typicalRange: [20_000, 500_000], registers: ANY_REG, urbanity: "any", defaultRails: ["transfer_bank", "ewallet"] , polarity: "out" },
+  { id: "telkomsel_pulsa", surfaces: ["pulsa", "telkomsel", "pulsa telkomsel"], kategori: "tagihan", typicalRange: [5_000, 200_000], registers: ANY_REG, urbanity: "any", defaultRails: ["pulsa", "ewallet", "tunai"] , polarity: "out" },
+  { id: "indihome", surfaces: ["indihome", "wifi", "tagihan wifi"], kategori: "tagihan", typicalRange: [200_000, 900_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["transfer_bank", "ewallet"] , polarity: "out" },
+  { id: "bpjs", surfaces: ["bpjs", "iuran bpjs"], kategori: "tagihan", typicalRange: [35_000, 600_000], registers: ANY_REG, urbanity: "any", defaultRails: ["transfer_bank", "ewallet"] , polarity: "out" },
+  { id: "kos", surfaces: ["kos", "kosan", "sewa kos"], kategori: "tempat_tinggal", typicalRange: [400_000, 4_000_000], registers: ANY_REG, urbanity: "urban", defaultRails: ["transfer_bank", "tunai"] , polarity: "out" },
+  { id: "spp_sekolah", surfaces: ["spp", "spp sekolah", "uang sekolah"], kategori: "pendidikan", typicalRange: [100_000, 3_000_000], registers: ANY_REG, urbanity: "any", defaultRails: ["transfer_bank", "tunai"] , polarity: "out" },
+  { id: "pesantren_syahriah", surfaces: ["syahriah", "syahriyah", "iuran pondok"], kategori: "pendidikan", typicalRange: [150_000, 2_500_000], registers: ["pesantren", "baku", "jawa"], urbanity: "any", defaultRails: ["transfer_bank", "tunai"] , polarity: "out" },
+  { id: "masjid_infaq", surfaces: ["infaq masjid", "kotak amal", "infaq"], kategori: "sosial", typicalRange: [2_000, 500_000], registers: ["pesantren", "baku", "jawa", "betawi", "sunda", "minang"], urbanity: "any", defaultRails: ["tunai", "transfer_bank"] , polarity: "out" },
+  { id: "iuran_warga", surfaces: ["iuran warga", "iuran rt", "kas rt"], kategori: "sosial", typicalRange: [5_000, 300_000], registers: ANY_REG, urbanity: "any", defaultRails: ["tunai"] , polarity: "out" },
 ];
 
 const VENDOR_BY_ID = new Map<string, Vendor>(VENDORS.map((v) => [v.id, v]));
@@ -468,11 +480,14 @@ function magnitudeOf(value: number): Magnitude | null {
 // Date surfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DATE_SURFACES: Readonly<Record<DateHint, readonly string[]>> = {
+export const DATE_SURFACES: Readonly<Record<DateHint, readonly string[]>> = {
   hari_ini: ["td", "tadi", "barusan", "hari ini", "tadi pagi", "sore tadi", "tadi siang"],
   kemarin: ["kemarin", "maren", "kmrn", "kemaren"],
   minggu_ini: ["minggu ini", "pekan ini"],
-  bulan_ini: ["bulan ini", "bulan ini kemarin awal"],
+  // Every surface must be readable as ITS OWN hint and no other. "bulan ini kemarin awal"
+  // used to live here: it embeds `kemarin`, so the blind parse read kemarin, disagreed with
+  // the spec's bulan_ini, and the cell failed every attempt for a phrase nobody would say.
+  bulan_ini: ["bulan ini", "awal bulan ini"],
   // Unreachable: KBBI lusa = day after tomorrow = FUTURE, and SYSTEM_PROMPT books only what
   // has already happened. The enum value stays in the schema; no cell may ever emit it.
   lusa: [],
@@ -506,11 +521,13 @@ export type AxisName =
 export const ROWS_PER_CELL = 6;
 
 export const TIER_ROW_BUDGET: Readonly<Record<Tier, number>> = {
-  ordinary: 0.40,
+  // Ordinary dominates: prod use is "catat pengeluaran yang sudah terjadi", not curhat/rencana.
+  ordinary: 0.50,
   notation: 0.13,
   register_noise: 0.07,
   direction: 0.15,
-  non_tx: 0.15,
+  // Kept small so the student still learns bukan_transaksi, without flooding the corpus.
+  non_tx: 0.05,
   adversarial: 0.10,
 };
 
@@ -571,9 +588,9 @@ function spec(s: Partial<AspectSpec> & Pick<AspectSpec, "aspect" | "tier" | "wei
 }
 
 export const ASPECT_SPECS: readonly AspectSpec[] = [
-  // ── ordinary (40% of rows) ────────────────────────────────────────────────
+  // ── ordinary (50% of rows) — daily completed-transaction logging ──────────
   spec({
-    aspect: "ord_single_out", tier: "ordinary", weight: 8,
+    aspect: "ord_single_out", tier: "ordinary", weight: 11,
     direction: ["out"], cardinality: ["single"], hardPins: ["direction", "cardinality"],
     benchAnalogue: null,
   }),
@@ -584,12 +601,12 @@ export const ASPECT_SPECS: readonly AspectSpec[] = [
     benchAnalogue: "income treated as pengeluaran — the 'always keluar' shortcut",
   }),
   spec({
-    aspect: "ord_multi_out", tier: "ordinary", weight: 5,
+    aspect: "ord_multi_out", tier: "ordinary", weight: 8,
     direction: ["out"], cardinality: ["dua", "tiga", "banyak"], hardPins: ["direction"],
     benchAnalogue: null,
   }),
   spec({
-    aspect: "ord_rekap_list", tier: "ordinary", weight: 3,
+    aspect: "ord_rekap_list", tier: "ordinary", weight: 5,
     direction: ["out"], cardinality: ["tiga", "banyak"], hardPins: ["direction", "noise"],
     noise: ["wa_ringkas", "emoji_format"], notation: NUM_NOTATION,
     benchAnalogue: "bulk list where each line needs its own amount",
@@ -637,7 +654,7 @@ export const ASPECT_SPECS: readonly AspectSpec[] = [
     benchAnalogue: "qty × unit price merged or split — both labels acceptable",
   }),
   spec({
-    aspect: "ord_wa_wrapper", tier: "ordinary", weight: 3,
+    aspect: "ord_wa_wrapper", tier: "ordinary", weight: 5,
     direction: ["out", "in", "mixed"], cardinality: ["single", "dua", "tiga"], hardPins: ["noise"],
     noise: ["wa_ringkas"],
     benchAnalogue: null,
@@ -751,18 +768,18 @@ export const ASPECT_SPECS: readonly AspectSpec[] = [
     benchAnalogue: "top up / isi saldo read as pemasukan",
   }),
 
-  // ── non_tx (15%) ──────────────────────────────────────────────────────────
-  // ≥60% of these carry a rupiah nominal: "curhat with no number" is free, the
-  // discriminative case is a number that must NOT be booked.
+  // ── non_tx (~5%) ──────────────────────────────────────────────────────────
+  // Sparse negatives: enough to teach bukan_transaksi, not enough to dominate sampling.
+  // Prefer cancel/query over open-ended curhat/rencana (less relevant for a logging bot).
   spec({
-    aspect: "ntx_curhat", tier: "non_tx", weight: 4,
+    aspect: "ntx_curhat", tier: "non_tx", weight: 1,
     direction: ["non_tx"], cardinality: ["zero"], correction: ["none"],
     dateHint: ["tidak_jelas"], rail: ["none"],
     hardPins: ["direction", "cardinality", "dateHint", "correction", "rail"],
     benchAnalogue: null,
   }),
   spec({
-    aspect: "ntx_future_intent", tier: "non_tx", weight: 5,
+    aspect: "ntx_future_intent", tier: "non_tx", weight: 1,
     direction: ["non_tx"], cardinality: ["zero"], correction: ["none"],
     dateHint: ["tidak_jelas"], rail: ["none"],
     hardPins: ["direction", "cardinality", "dateHint", "correction", "rail"],
@@ -779,7 +796,7 @@ export const ASPECT_SPECS: readonly AspectSpec[] = [
     benchAnalogue: "'gak jadi beli' still booked",
   }),
   spec({
-    aspect: "ntx_query", tier: "non_tx", weight: 3,
+    aspect: "ntx_query", tier: "non_tx", weight: 2,
     direction: ["non_tx"], cardinality: ["zero"], correction: ["none"],
     dateHint: ["tidak_jelas"], rail: ["none"],
     hardPins: ["direction", "cardinality", "dateHint", "correction", "rail"],
@@ -894,8 +911,8 @@ function varies(s: AspectSpec, axis: AxisName): boolean {
 export const TARGET_PEMASUKAN_ENTRY_SHARE = 0.23;
 
 export const TARGETS = {
-  direction: { out: 0.56, in: 0.20, mixed: 0.12, non_tx: 0.12 },
-  cardinality: { zero: 0.12, single: 0.50, dua: 0.20, tiga: 0.11, banyak: 0.07 },
+  direction: { out: 0.63, in: 0.20, mixed: 0.12, non_tx: 0.05 },
+  cardinality: { zero: 0.05, single: 0.57, dua: 0.20, tiga: 0.11, banyak: 0.07 },
   magnitude: { receh: 0.12, kecil: 0.38, sedang: 0.32, besar: 0.14, jumbo: 0.04 },
   dateHint: {
     tidak_jelas: 0.34, hari_ini: 0.38, kemarin: 0.18, minggu_ini: 0.05, bulan_ini: 0.04,
@@ -1448,7 +1465,16 @@ const SINGLE_NILAI_ASPECTS: readonly Aspect[] = [
   "adv_split_share", "adv_discount_net", "adv_fuzzy_amount", "adv_phantom_income_bait",
 ];
 
-const QTY_KEYWORDS = ["bungkus", "porsi", "orang", "biji", "pcs", "botol", "lusin", "gelas"];
+/**
+ * Each keyword must denote exactly ONE item, so "N <keyword> @unit" means N × unit.
+ * `lusin` used to be here and is a pack of 12: the spec ordered "3 lusin @62.500" and expected
+ * 3 entries, while the teacher and the parser both correctly read 36 items — so the row was
+ * rejected for their competence, and ord_qty_simple/adv_qty_x_unit yielded nothing at all.
+ */
+const QTY_KEYWORDS = ["bungkus", "porsi", "orang", "biji", "pcs", "botol", "gelas"];
+
+/** Packs, not items. A qty cell may never use these — see QTY_KEYWORDS. */
+const MULTI_ITEM_KEYWORDS = ["lusin", "kodi", "gross", "rim"];
 
 function pickVendors(rng: Rng, d: Draft, want: number): string[] {
   const s = specOf(d.aspect);
@@ -1457,7 +1483,9 @@ function pickVendors(rng: Rng, d: Draft, want: number): string[] {
     .map((id) => VENDOR_BY_ID.get(id))
     .filter((v): v is Vendor => v !== undefined)
     .filter((v) => bandsOverlap([v.typicalRange[0], v.typicalRange[1] + 1], band))
-    .filter((v) => v.registers.includes(d.register));
+    .filter((v) => v.registers.includes(d.register))
+    // An `out`-only vendor on an `in` cell orders a message no one can write — see Vendor.polarity.
+    .filter((v) => d.direction !== "in" && d.direction !== "out" ? true : v.polarity === "any" || v.polarity === d.direction);
   if (d.rail !== "none") {
     const railed = cands.filter((v) => v.defaultRails.includes(d.rail));
     if (railed.length > 0) cands = railed;
@@ -1707,6 +1735,19 @@ export function assertCellCoherent(cell: Cell): void {
   if (cell.dateSurface !== null && cell.direction !== "non_tx") {
     if (/\blusa\b/i.test(cell.dateSurface)) fail("lusa surface on a transactional cell");
   }
+  // A surface that embeds another hint's trigger orders a text whose date reads as that other
+  // hint. The blind parse is then RIGHT and the spec wrong, but the row is rejected anyway —
+  // so the cell can never pass, however good the teacher is.
+  if (cell.dateSurface !== null) {
+    for (const [hint, surfaces] of Object.entries(DATE_SURFACES)) {
+      if (hint === cell.dateHint) continue;
+      for (const s of surfaces) {
+        if (new RegExp(`\\b${escapeRegExp(s)}\\b`, "i").test(cell.dateSurface)) {
+          fail(`dateSurface "${cell.dateSurface}" embeds the foreign ${hint} trigger "${s}"`);
+        }
+      }
+    }
+  }
 
   if (cell.direction === "non_tx") {
     if (cell.cardinality !== "zero") fail(`non_tx must be cardinality zero, got ${cell.cardinality}`);
@@ -1718,6 +1759,11 @@ export function assertCellCoherent(cell: Cell): void {
     if (cell.nilai.length === 0) fail("transactional cell with no nilai");
     const hasCount = cell.invariants.some((i) => i.kind === "entry_count" || i.kind === "qty_merge_ok");
     if (!hasCount) fail("transactional cell asserts neither entry_count nor qty_merge_ok");
+    for (const i of cell.invariants) {
+      if (i.kind !== "qty_merge_ok") continue;
+      const pack = MULTI_ITEM_KEYWORDS.find((k) => new RegExp(`\\b${k}\\b`, "i").test(i.keyword));
+      if (pack) fail(`qty keyword "${i.keyword}" is a pack (${pack}), not one item — N × unit would be wrong`);
+    }
     // dateSurface ⟺ a stated date. Non_tx is exempt: its surface is a FUTURE trigger
     // ("besok"), which is precisely why there is no entry to hang a hint on.
     const stated = cell.dateHint !== "tidak_jelas";
@@ -1776,6 +1822,14 @@ export function assertCellCoherent(cell: Cell): void {
     if (!v) fail(`unknown vendor ${id}`);
     else if (!bandsOverlap([v.typicalRange[0], v.typicalRange[1] + 1], band)) {
       fail(`vendor ${id} range ${v.typicalRange.join("-")} cannot reach ${cell.magnitude}`);
+    } else if (
+      (cell.direction === "in" || cell.direction === "out") &&
+      v.polarity !== "any" &&
+      v.polarity !== cell.direction
+    ) {
+      // mixed/non_tx are exempt: a mixed message has room for both flows, and a plan to spend
+      // at a shop is coherent whatever the shop is.
+      fail(`vendor ${id} polarity=${v.polarity} contradicts direction=${cell.direction}`);
     }
   }
 }

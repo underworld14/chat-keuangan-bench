@@ -13,11 +13,11 @@ dependency; see [`docs/AGENTIC.md`](docs/AGENTIC.md).)
 
 ## Two benches
 
-| | **Parse** (base + hard) | **Rupiah-Pro** |
-|--|--------------|----------------|
-| **What** | One-shot parse → structured `pemasukan` / `pengeluaran` JSON | Multi-turn agent with tools |
-| **Run** | `bun run eval:parse -- --model <id>` then `bun run score:parse` | `bun run eval:agentic -- --model <id>` then `bun run score:rupiah-pro` |
-| **Docs** | [`docs/REPORT.md`](docs/REPORT.md) · [`docs/FINDINGS.md`](docs/FINDINGS.md) | [`docs/AGENTIC.md`](docs/AGENTIC.md) |
+|          | **Parse** (base + hard)                                                     | **Rupiah-Pro**                                                         |
+| -------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **What** | One-shot parse → structured `pemasukan` / `pengeluaran` JSON                | Multi-turn agent with tools                                            |
+| **Run**  | `bun run eval:parse -- --model <id>` then `bun run score:parse`             | `bun run eval:agentic -- --model <id>` then `bun run score:rupiah-pro` |
+| **Docs** | [`docs/REPORT.md`](docs/REPORT.md) · [`docs/FINDINGS.md`](docs/FINDINGS.md) | [`docs/AGENTIC.md`](docs/AGENTIC.md)                                   |
 
 `eval:parse` runs **base (28)** then **Parse-25 hard** sequentially. Prefer this for small
 on-device models. Individual runners (`eval --suite base`, `eval:single`, `eval:hard-25`) remain
@@ -72,6 +72,19 @@ bun run score:rupiah-pro
 Artifacts: `docs/results/runs/` (raw base/hard JSON) → `docs/results/parse/` (leaderboard) →
 `docs/charts/parse/` (SVG). Rupiah-Pro stays under `docs/results/agentic/` + `docs/charts/rupiah-pro/`.
 
+### Results viewer
+
+Browse the Parse leaderboard with drill-down into model runs and failed scenarios:
+
+```bash
+bun run viewer
+# → http://127.0.0.1:4173/viewer/
+```
+
+The same static files under [`docs/viewer/`](docs/viewer/) publish to GitHub Pages (Actions workflow
+deploys `docs/`). Enable **Settings → Pages → Source: GitHub Actions**, then open
+`https://<user>.github.io/chat-keuangan-bench/viewer/`.
+
 ---
 
 ## Generating fine-tune data
@@ -87,7 +100,7 @@ the agreement check costs no GPU because the spec isn't a language model. Rows f
 structured reasons.
 
 The taxonomy is authored for real-world coverage and imports nothing from the benchmark on purpose:
-Parse-25 is an adversarial *test* set (91% pengeluaran, 91% `hari_ini`, `tidak_jelas` never
+Parse-25 is an adversarial _test_ set (91% pengeluaran, 91% `hari_ini`, `tidak_jelas` never
 asserted) and training on that teaches a small model to guess the majority instead of learning
 the rule.
 
@@ -96,31 +109,45 @@ the rule.
 bun run generate:sft-parse -- --self-test           # validators vs hand-authored gold
 bun run generate:sft-parse -- --dry-run --count 20  # plan, coverage, sample prompts
 
-# Pilot. Read all 100 rows by hand — this is the real gate.
-bun run generate:sft-parse -- --model <teacher-id> --count 100
+# Cloud teacher (default provider=@ai-sdk/openai chat — structuredOutputs on).
+bun run generate:sft-parse -- \
+  --model <teacher-id> --count 100 \
+  --base-url https://ai.sumopod.com/v1 \
+  --api-key "$OPENAI_API_KEY"
 
-# Scale up once the pilot looks right.
-bun run generate:sft-parse -- --model <teacher-id> --count 2000
+# Or set OPENAI_BASE_URL / OPENAI_API_KEY in the environment / .env.
+
+# LM Studio teacher (escape hatch — same provider as benches):
+bun run generate:sft-parse -- \
+  --model <teacher-id> --count 100 \
+  --provider openai-compatible \
+  --base-url http://127.0.0.1:1234/v1 --api-key lm-studio
 ```
 
-> **The teacher is not the student.** `--model` here is the *teacher*: a large local model
-> (14B–32B) that generates the data. The small model you are fine-tuning never appears in this
-> command. A 1.7B teacher will fail preflight (no structured output) or, worse, pass and produce
-> junk labels.
+> **The teacher is not the student.** `--model` here is the _teacher_ that generates the data.
+> The small model you fine-tune never appears in this command. SFT defaults to the official
+> OpenAI AI SDK provider (`--provider openai`) so JSON-schema structured output actually
+> reaches the wire. Parse-25 / Rupiah-Pro benches stay on `--provider openai-compatible`
+> for LM Studio and are unaffected.
 
-Useful flags: `--seed <n>` (reproducible; same seed + same teacher → same corpus) ·
-`--concurrency <n>` (default 4; lower to 1–2 for local LM Studio) · `--resume` ·
+Useful flags: `--provider openai|openai-compatible` (default `openai`) · `--seed <n>` ·
+`--batch-size <n>` (default 5; `--batch-size 1` is safest if the teacher drops/truncates ids) ·
+`--concurrency <n>` (default 5) · `--temperature <0-2>` (default 0.7) · `--resume` ·
 `--overwrite` · `--system-prompt-mode full|short|none|mix` · `--min-success-rate <0-1>`
+
+Cloud teachers: defaults (`--provider openai --batch-size 5 --concurrency 5`) are a good
+start. Local LM Studio: `--provider openai-compatible --batch-size 1 --concurrency 1`.
 
 **After the pilot, read the manifest** (`docs/results/sft/sft-parse-manifest-latest.json`):
 
-| Field | What it tells you |
-|---|---|
-| `perCellAcceptRate` / `weakCells` | Cells below ~0.9 mean the teacher is weak there — hand-label or drop them |
+| Field                               | What it tells you                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `perCellAcceptRate` / `weakCells`   | Cells below ~0.9 mean the teacher is weak there — hand-label or drop them            |
 | `realized.entryLevelPemasukanShare` | Should be near 0.23. Near 0.09 means the corpus drifted back to "always pengeluaran" |
-| `realized.zeroYieldAspects` | Any aspect here produced **nothing** — the student will be blind to it |
-| `rejectsByPhase` | Why rows died. `rejects.jsonl` has the structured reasons |
-| `maxSimilarityVsScoredCorpus` | Audits the no-leak claim instead of asserting it |
+| `realized.zeroYieldAspects`         | Any aspect here produced **nothing** — the student will be blind to it               |
+| `rejectsByPhase`                    | Why rows died. `rejects.jsonl` has the structured reasons                            |
+| `llmRequests`                       | How many text/label batch calls the run spent (cloud cost audit)                     |
+| `maxSimilarityVsScoredCorpus`       | Audits the no-leak claim instead of asserting it                                     |
 
 ---
 

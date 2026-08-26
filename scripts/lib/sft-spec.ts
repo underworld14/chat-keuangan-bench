@@ -9,7 +9,7 @@
  * language model — which is why the agreement check costs zero GPU.
  */
 
-import { VENDORS, type Cell, type Invariant, type TokenValue } from "../../src/core/parse-taxonomy.ts";
+import { VENDORS, type Cell, type Invariant, type Rail, type Register, type TokenValue } from "../../src/core/parse-taxonomy.ts";
 import type { ExpectedEntry, LabelExpectation } from "./sft-validate.ts";
 
 const VENDOR_BY_ID = new Map(VENDORS.map((v) => [v.id, v]));
@@ -122,7 +122,30 @@ export function excusedByConstruction(spec: RowSpec): Set<number> {
   const out = new Set<number>();
   for (const d of spec.distractors) out.add(d.rupiah);
   for (const s of spec.surfaces) if (!booked.has(s.rupiah)) out.add(s.rupiah);
+  // The unit price under the MERGED reading. `booked` above is alternatives[0] — the SPLIT
+  // reading — which books the unit, so the loop never excuses it and the doc comment's promise
+  // ("a qty cell's unit price under the merged reading") was not kept: a merged label left the
+  // unit sitting in the text unbooked and died at the dropped-entry gate. Excusing it is a
+  // no-op for the split reading, where it is genuinely consumed.
+  if (spec.quantity) out.add(spec.quantity.unit);
   return out;
+}
+
+/**
+ * Amounts the SPEC declares correct but the TEXT cannot contain — today, exactly one: a qty
+ * cell's merged total. cellToExpectation offers "N × unit" and "one entry of unit×count" as
+ * equally valid readings, while buildTextPrompt orders the message to state the unit price and
+ * NOT the total ("Jangan tulis total"). So unit×count appears nowhere for traceAmount to find,
+ * guardTrace runs before the agreement check, and every merged label was rejected as a
+ * hallucination — the offer in alternatives[1] was unreachable code.
+ *
+ * Deliberately NOT "every amount in every alternative": the bijection gate already pins the
+ * text's amounts to the spec's surfaces, so the merged total is the only legal amount that can
+ * be missing. Widening this further would blunt the gate that catches invented money.
+ */
+export function traceableByConstruction(spec: RowSpec): Set<number> {
+  if (!spec.quantity) return new Set();
+  return new Set((spec.expectation.alternatives[1] ?? []).map((e) => e.amount));
 }
 
 /**
@@ -136,16 +159,30 @@ export function expectedTextAmounts(spec: RowSpec): number[] {
   return [...surfaces, ...spec.distractors.map((d) => d.rupiah)];
 }
 
-const REGISTER_HINTS: Record<string, string> = {
-  baku: "bahasa Indonesia baku dan formal (saya, membeli, membayar)",
-  jaksel_gaul: "gaul Jakarta Selatan (gue/gw, duit, banget, doang, aja) — sisipkan, jangan ubah angkanya",
-  betawi: "Betawi (gue, aje, dah, nih) — jangan sapaan 'bang' ke bot",
-  jawa: "campur Jawa (wis, tuku, duwit, piro) — jangan sapaan 'rek' ke bot",
-  sunda: "campur Sunda (meuli, artos, atos, teu, mah, atuh)",
-  medan: "Medan — PENTING: pajak=pasar, kereta=sepeda motor, motor=mobil, kedai, awak — jangan sapaan 'kelen' ke bot",
-  minang: "campur Minang (pitih=uang, kadai=kedai, baa, lai)",
-  makassar_timur: "Indonesia timur (partikel mi/ji/ki: 'sudah mi', 'berapa ki')",
-  pesantren: "kosakata pesantren sebagai isi transaksi (infaq, sedekah, syahriah, setoran wali, santri) — jangan sapaan 'ustadz' ke bot",
+/**
+ * A register is a CARRIER: it colours the wording and must NOT move the parse (see the
+ * parse-taxonomy header). But several registers carry direction-loaded VERBS — jv `tuku` and
+ * su `meuli` both mean "buy", and `infaq`/`sedekah` are money leaving — so pasting them onto an
+ * income cell orders a message that reads as an expense. The blind parse then agrees with the
+ * text, disagrees with the spec, and the row dies as an "agreement" reject we authored.
+ *
+ * `core` is direction-free and safe anywhere. `outOnly` holds the spend vocabulary and is
+ * offered only where money actually leaves. There is deliberately no `inOnly`: inventing
+ * regional income verbs I cannot verify would trade this bug for a subtler one, and the core
+ * lexicon already perturbs the text enough to do the register's job.
+ */
+type RegisterHint = { core: string; outOnly?: string };
+
+const REGISTER_HINTS: Record<Register, RegisterHint> = {
+  baku: { core: "bahasa Indonesia baku dan formal (saya, sudah, tersebut)", outOnly: "membeli, membayar" },
+  jaksel_gaul: { core: "gaul Jakarta Selatan (gue/gw, duit, banget, doang, aja) — sisipkan, jangan ubah angkanya" },
+  betawi: { core: "Betawi (gue, aje, dah, nih) — jangan sapaan 'bang' ke bot" },
+  jawa: { core: "campur Jawa (wis, duwit, piro) — jangan sapaan 'rek' ke bot", outOnly: "tuku (beli)" },
+  sunda: { core: "campur Sunda (artos, atos, teu, mah, atuh)", outOnly: "meuli (beli)" },
+  medan: { core: "Medan — PENTING: pajak=pasar, kereta=sepeda motor, motor=mobil, kedai, awak — jangan sapaan 'kelen' ke bot" },
+  minang: { core: "campur Minang (pitih=uang, kadai=kedai, baa, lai)" },
+  makassar_timur: { core: "Indonesia timur (partikel mi/ji/ki: 'sudah mi', 'berapa ki')" },
+  pesantren: { core: "kosakata pesantren (santri, pondok, ngaji) — jangan sapaan 'ustadz' ke bot", outOnly: "infaq, sedekah, syahriah" },
 };
 
 const NOISE_HINTS: Record<string, string> = {
@@ -156,17 +193,69 @@ const NOISE_HINTS: Record<string, string> = {
   emoji_format: "boleh emoji / list singkat seperti chat ke bot pencatat",
 };
 
-const RAIL_HINTS: Record<string, string> = {
-  none: "",
-  tunai: "bayar tunai/cash",
-  qris: "bayar pakai QRIS",
-  ewallet: "pakai e-wallet (GoPay/OVO/Dana/ShopeePay)",
-  transfer: "lewat transfer bank (BCA/BRI/Mandiri/BNI)",
-  kartu: "pakai kartu debit/kredit",
-  cod: "COD",
-  emoney: "pakai e-money (e-Toll/Flazz/Brizzi)",
-  pulsa: "potong pulsa",
+/**
+ * Rail phrasing per direction. Same carrier rule as REGISTER_HINTS: an income cell must be told
+ * how the money ARRIVED, never how it was paid. The old table was expense-only and pasted onto
+ * `in` cells verbatim, so ord_single_in-01 ordered "→ MASUK — pakai kata: terima/dapat" and
+ * then "Metode bayar: bayar tunai/cash" four lines later.
+ *
+ * Typed `Record<Rail, …>`, not `Record<string, …>`: the old table was keyed "transfer" while the
+ * Rail axis says "transfer_bank", so every transfer cell — 13% of the taxonomy — silently got no
+ * rail line at all and the compiler had nothing to say about it.
+ */
+const RAIL_HINTS: Record<Rail, { out: string; in: string } | null> = {
+  none: null,
+  tunai: { out: "bayar tunai/cash", in: "terima tunai/cash" },
+  qris: { out: "bayar pakai QRIS", in: "masuk lewat QRIS" },
+  ewallet: { out: "pakai e-wallet (GoPay/OVO/Dana/ShopeePay)", in: "masuk ke e-wallet (GoPay/OVO/Dana/ShopeePay)" },
+  transfer_bank: { out: "lewat transfer bank (BCA/BRI/Mandiri/BNI)", in: "lewat transfer bank masuk (BCA/BRI/Mandiri/BNI)" },
+  kartu: { out: "pakai kartu debit/kredit", in: "masuk ke kartu debit (refund)" },
+  cod: { out: "COD", in: "refund COD" },
+  emoney: { out: "pakai e-money (e-Toll/Flazz/Brizzi)", in: "masuk ke e-money (e-Toll/Flazz/Brizzi)" },
+  pulsa: { out: "potong pulsa", in: "masuk jadi pulsa" },
 };
+
+/**
+ * Shared teacher rules for single-item and batch text generation.
+ * BAGUS/JELEK examples specifically target bijection and direction failures — keep them
+ * in every text-gen path, including batch.
+ */
+export function textTeacherSystemRules(): string {
+  return [
+    "Ini BUKAN chat ke teman. Frame: user submit teks singkat ke bot pencatat keuangan.",
+    "Mayoritas pesan = pencatatan uang yang SUDAH TERJADI (baru bayar / baru terima), bukan curhat atau rencana.",
+    "",
+    "Contoh BAGUS — pencatatan jadi (ikutin polanya, jangan copy angkanya):",
+    "- \"baru beli nasi telur 12rb sama teh pucuk 4rb\"",
+    "- \"catat ya bayar parkir 5rb\"",
+    "- \"transfer masuk 350rb tadi pagi\"",
+    "- \"top up gopay 17.500\"",
+    "",
+    "Contoh BAGUS — sengaja BUKAN transaksi (hanya jika brief bilang begitu):",
+    "- \"rencana beli kulkas 3jt, jangan dicatat dulu\"",
+    "- \"batalin order tokped 85rb ya, gak jadi\"",
+    "",
+    "Contoh JELEK (ditolak sistem):",
+    "- nominal diulang dua kali: \"bayar 3.200.000 ... Rp3200000\"",
+    "- arah kabur: \"uang 50rb di warung\" (tidak jelas masuk/keluar)",
+    "- nominal diganti bentuk lain: diminta \"goceng\" tapi ditulis \"5rb\"",
+    "- waktu campur: diminta \"bulan ini\" tapi ada \"kemarin\" juga",
+    "- curhat / rencana ditulis seolah sudah dibayar (atau sebaliknya)",
+    "",
+    "Aturan keras:",
+    "- Keluarkan HANYA teks pesannya. Satu baris. Tanpa JSON, tanpa kutip pembungkus, tanpa penjelasan.",
+    "- Setiap bentuk nominal di daftar WAJIB muncul PERSIS seperti ditulis, dan TEPAT SATU KALI (jangan diulang).",
+    "- JANGAN menambah nominal/rupiah/slang angka lain di luar daftar.",
+    "- Arah uang HARUS terbaca dari kata kerja alami (bukan meta-label):",
+    "  pemasukan → terima / dapat / masuk / cair / transfer masuk",
+    "  pengeluaran → bayar / beli / keluar / top up / transfer ke",
+    "- JANGAN sapaan ke manusia (bang, bro, rek, ustadz, mas, kak, kelen).",
+    "- JANGAN underscore di nama tempat (\"warung madura\", bukan \"warung_madura\").",
+    "- JANGAN meta-label (\"ini pemasukan\", \"bukan transaksi\", \"duit pindah\").",
+    "- Hanya jika brief bilang non-transaksi: isyarat alami wajib (\"belum jadi\", \"batal\", \"jangan dicatat\", \"berapa ya\").",
+    "- Panjang biasanya <20 kata (kecuali diminta bertele-tele).",
+  ].join("\n");
+}
 
 /**
  * Prompt the teacher to write ONE message. It is never shown the JSON schema or the label —
@@ -176,37 +265,40 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
   const c = spec.cell;
   const system = [
     "Kamu menulis SATU pesan yang dikirim user ke AI/bot pencatat keuangan berbahasa Indonesia.",
-    "Ini BUKAN chat ke teman. Frame: user baru selesai (atau mau menunda) transaksi, lalu submit teks singkat ke bot agar dicatat atau diabaikan.",
-    "",
-    "Campur gaya (pilih yang cocok dengan instruksi di bawah):",
-    "- kering: \"bpjs 3,2jt via dana\", \"top up gopay 17.500\"",
-    "- ringan ke bot: \"catat ya beli nasi padang 25rb\", \"transfer masuk 350rb td\"",
-    "",
-    "Aturan keras:",
-    "- Keluarkan HANYA teks pesannya. Tanpa penjelasan, tanpa JSON, tanpa tanda kutip pembungkus.",
-    "- WAJIB memuat setiap nominal yang diminta, PERSIS pada bentuk penulisan yang diberikan.",
-    "- JANGAN menambahkan nominal rupiah lain apa pun di luar yang diminta.",
-    "- JANGAN sapaan ke manusia seolah lawan bicara orang (bang, bro, rek, ustadz, mas, kak, kelen).",
-    "- JANGAN tulis nama tempat/barang dengan underscore (\"warung madura\", bukan \"warung_madura\").",
-    "- JANGAN tulis meta-label pengajaran (\"ini pengeluaran bukan pemasukan\", \"jelas duit pindah\", \"bukan transaksi\").",
-    "- Khusus rencana / batal / curhat: boleh isyarat alami ke bot (\"belum jadi\", \"batal\", \"jangan dicatat dulu\") — itu bagian dari submit.",
-    "- Tulis seperti manusia buru-buru ke bot, bukan contoh buku teks / roleplay.",
-    "- Panjang wajar: satu baris, biasanya di bawah 20 kata (kecuali diminta bertele-tele).",
+    textTeacherSystemRules(),
   ].join("\n");
 
   const alt0 = spec.expectation.alternatives[0] ?? [];
   const nMasuk = alt0.filter((e) => e.direction === "pemasukan").length;
   const nKeluar = alt0.filter((e) => e.direction === "pengeluaran").length;
+  const nonTx = spec.expectation.nonTransaction;
 
   const lines: string[] = [];
   lines.push(`Tulis satu pesan yang menyatakan: ${aspectBrief(c.aspect, nMasuk, nKeluar)}`);
   lines.push("");
+
+  if (nonTx) {
+    lines.push(
+      "INI BUKAN TRANSAKSI JADI — bot HARUS mengabaikan (bukan_transaksi).",
+      "Jangan bunyi seperti pencatatan yang sudah terjadi. JANGAN pakai \"catat ya\" / \"baru beli\" / \"sudah terima\".",
+      "Pakai isyarat jelas: belum / batal / jangan dicatat / berapa ya / males / belum ada duit.",
+      "",
+    );
+  } else {
+    // Keep this direction-neutral: income cells must not be told to "bayar/beli".
+    lines.push(
+      "INI TRANSAKSI YANG SUDAH TERJADI — gaya catat harian ke bot pencatat.",
+      "Boleh singkat ala chat: \"catat ya…\", \"baru…\", \"td…\". Hindari curhat panjang atau rencana masa depan.",
+      "",
+    );
+  }
+
   if (spec.surfaces.length === 0) {
     // A dangling "nominal wajib:" header with nothing under it invites an invented amount,
     // which the bijection guard would then reject — burning the cell for our own bad prompt.
     lines.push("JANGAN sebut nominal rupiah apa pun. Pesan ini memang tidak memuat angka uang.");
   } else {
-    lines.push("Nominal yang WAJIB muncul persis seperti ini:");
+    lines.push("Nominal yang WAJIB muncul — salin PERSIS string di dalam tanda kutip, masing-masing TEPAT SEKALI:");
     // The direction MUST be stated per surface. The aspect brief alone is not enough: aspects
     // like ord_vendor_named vary direction across cells while the brief says "pengeluaran",
     // so an `in` cell would order an expense and then reject the teacher for writing one.
@@ -217,11 +309,19 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
       const dir = byAmount.get(n.rupiah);
       const tag =
         dir === "pemasukan"
-          ? "  → ini uang MASUK (diterima)"
+          ? "  → MASUK — pakai kata: terima/dapat/masuk/cair"
           : dir === "pengeluaran"
-            ? "  → ini uang KELUAR (dibayar)"
-            : "";
-      lines.push(`  - "${n.surface}"  (artinya Rp${n.rupiah.toLocaleString("id-ID")})${tag}`);
+            ? "  → KELUAR — pakai kata: bayar/beli/keluar/top up"
+            : nonTx
+              ? "  → disebut saja, JANGAN seolah sudah dibayar/diterima"
+              : "";
+      lines.push(`  - "${n.surface}"  (= Rp${n.rupiah.toLocaleString("id-ID")})${tag}`);
+    }
+    if (spec.surfaces.length > 1 && !spec.quantity) {
+      lines.push(
+        "",
+        `Semua ${spec.surfaces.length} nominal di atas HARUS muncul. Jangan hanya sebagian.`,
+      );
     }
   }
 
@@ -230,15 +330,18 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
     // and the cell fails every attempt for a reason the teacher was never told.
     lines.push(
       "",
-      `Sebutkan JUMLAH ITEMNYA dengan jelas: ${spec.quantity.count} ${spec.quantity.keyword}, ` +
-        `masing-masing seharga "${spec.surfaces[0]?.surface ?? spec.quantity.unit}". ` +
-        `Jangan tulis totalnya — cukup jumlah item dan harga satuannya.`,
+      `Sebutkan JUMLAH ITEM dengan angka jelas: ${spec.quantity.count} ${spec.quantity.keyword}, ` +
+        `harga satuan "${spec.surfaces[0]?.surface ?? spec.quantity.unit}" muncul TEPAT SEKALI. ` +
+        `Jangan tulis total (bukan ${spec.quantity.count}×harga).`,
     );
   }
 
   if (spec.distractors.length > 0) {
     lines.push("");
-    lines.push("Nominal berikut juga harus disebut, TAPI pesan harus jelas bahwa nominal ini TIDAK jadi dicatat:");
+    lines.push(
+      "Nominal berikut WAJIB disebut, tapi HARUS ada kata batal/rencana/salah/koreksi/patungan/diskon " +
+        "supaya jelas TIDAK dicatat sebagai transaksi jadi:",
+    );
     for (const d of spec.distractors) {
       lines.push(`  - Rp${d.rupiah.toLocaleString("id-ID")} — ${d.why}`);
     }
@@ -246,30 +349,57 @@ export function buildTextPrompt(spec: RowSpec): { system: string; user: string }
 
   if (c.dateSurface) {
     lines.push("");
-    lines.push(`Sebutkan waktunya pakai kata: "${c.dateSurface}"`);
+    lines.push(
+      `Waktu: pakai PERSIS kata "${c.dateSurface}" sekali. ` +
+        `JANGAN tambah kata waktu lain (td/tadi/kemarin/besok/bulan ini/minggu ini) kecuali itu juga yang diminta.`,
+    );
   } else {
     lines.push("");
-    lines.push("JANGAN sebut waktu sama sekali (tanpa td/tadi/kemarin/besok).");
+    lines.push("JANGAN sebut waktu sama sekali (tanpa td/tadi/kemarin/besok/bulan ini/minggu ini).");
   }
 
-  const reg = REGISTER_HINTS[c.register];
-  if (reg && c.register !== "baku") {
+  // Top-up and fee cells often get split into phantom second entries by the blind parser.
+  if (c.aspect === "ord_topup_ewallet" || c.aspect === "dir_topup_not_income") {
+    lines.push(
+      "",
+      "Top up: satu aksi isi saldo saja. Jangan pecah jadi \"top up\" + \"beli pulsa\" terpisah di teks.",
+    );
+  }
+
+  // Money actually leaves on `out` and on `mixed` (a mixed message has an expense by
+  // definition), so spend vocabulary is honest there and nowhere else.
+  const spends = !nonTx && nKeluar > 0;
+
+  // Total Record<Register, …>, so the lookup cannot miss — and unlike the old `Record<string,…>`
+  // a missing key is now a compile error rather than a silently dropped line.
+  const reg = REGISTER_HINTS[c.register]!;
+  const regText = spends && reg.outOnly ? `${reg.core}; boleh: ${reg.outOnly}` : reg.core;
+  if (c.register !== "baku") {
     const intensity =
       c.registerIntensity === "sisip"
         ? "sisipkan hanya 1-2 kata khasnya, sisanya bahasa Indonesia"
         : c.registerIntensity === "campur"
           ? "campur cukup kentara"
           : "pakai logat itu secara penuh";
-    lines.push("", `Gaya bahasa: ${reg}. Intensitas: ${intensity}.`);
-  } else if (reg) {
-    lines.push("", `Gaya bahasa: ${reg}.`);
+    lines.push("", `Gaya bahasa: ${regText}. Intensitas: ${intensity}.`);
+  } else {
+    lines.push("", `Gaya bahasa: ${regText}.`);
   }
 
   const noise = NOISE_HINTS[c.noise];
   if (noise) lines.push(`Gaya tulis: ${noise}`);
 
+  // Omitted for non_tx on purpose: naming a rail on a message about money that has NOT moved
+  // invites "sudah bayar pakai QRIS", which is exactly the completed-transaction reading the
+  // cell must avoid.
   const rail = RAIL_HINTS[c.rail];
-  if (rail) lines.push(`Metode bayar (sebut sekilas, jangan jadikan entri terpisah): ${rail}`);
+  if (rail && !nonTx) {
+    lines.push(
+      spends
+        ? `Metode bayar (sebut sekilas sebagai cara bayar, JANGAN jadi nominal/entri terpisah): ${rail.out}`
+        : `Cara uang masuk (sebut sekilas, JANGAN jadi nominal/entri terpisah): ${rail.in}`,
+    );
+  }
 
   if (c.vendors.length > 0) {
     lines.push(
@@ -327,10 +457,10 @@ function aspectBrief(aspect: string, nMasuk: number, nKeluar: number): string {
   }
 
   const briefs: Record<string, string> = {
-    ord_single_out: "satu pengeluaran biasa yang baru terjadi — submit ke bot pencatat",
-    ord_single_in: "satu pemasukan biasa (uang MASUK) — submit ke bot pencatat",
-    ord_multi_out: "dua atau lebih pengeluaran dalam satu submit ke bot",
-    ord_rekap_list: "rekap beberapa pengeluaran dalam bentuk daftar singkat ke bot",
+    ord_single_out: "satu pengeluaran yang baru terjadi, gaya catat harian (mis. beli makan/minum)",
+    ord_single_in: "satu pemasukan yang baru diterima (uang MASUK) — submit ke bot pencatat",
+    ord_multi_out: "dua atau lebih pengeluaran yang sudah dibayar dalam satu submit (mis. nasi + minum)",
+    ord_rekap_list: "rekap beberapa pengeluaran yang sudah terjadi, daftar singkat ke bot",
     ord_vendor_named: "pengeluaran di sebuah toko/tempat yang disebut namanya",
     ord_rail_named: "pengeluaran yang menyebut cara bayarnya",
     ord_recurring_bill: "bayar tagihan rutin (listrik/wifi/kos/spp/bpjs)",
@@ -353,10 +483,10 @@ function aspectBrief(aspect: string, nMasuk: number, nKeluar: number): string {
     dir_mixed_message: "satu submit berisi uang masuk DAN uang keluar sekaligus",
     dir_lexical_trap: "transaksi yang kata kerjanya bisa menyesatkan arah uangnya (utang/piutang, dibayar/membayar)",
     dir_topup_not_income: "top up saldo (uang pindah) — sebut top up/isi saldo secara alami, tanpa meta-label",
-    ntx_curhat: "curhat/keluhan soal uang ke bot — TIDAK ada transaksi yang sudah terjadi",
-    ntx_future_intent: "rencana beli di masa depan dikirim ke bot — belum terjadi, minta jangan dicatat",
-    ntx_cancelled: "pembelian dibatalkan — minta bot jangan mencatat",
-    ntx_query: "pertanyaan ke bot soal pengeluaran, bukan pencatatan transaksi baru",
+    ntx_curhat: "keluhan singkat soal uang TANPA minta dicatat — jangan bunyi seperti pencatatan jadi",
+    ntx_future_intent: "rencana belanja yang BELUM terjadi — tegas minta jangan dicatat",
+    ntx_cancelled: "pembelian/order dibatalkan — minta bot jangan mencatat",
+    ntx_query: "tanya ke bot (berapa/sudah belum), BUKAN submit pencatatan baru",
     adv_correction_amount: "pengeluaran yang nominalnya diralat di tengah kalimat",
     adv_correction_magnitude: "pengeluaran yang satuannya diralat (ribu vs juta)",
     adv_price_copy_bait: "beberapa barang dengan harga berbeda-beda yang gampang tertukar",

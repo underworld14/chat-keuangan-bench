@@ -1,0 +1,78 @@
+{
+  "bench": "Parse",
+  "version": "1.0.0",
+  "generatedAt": "2026-07-17T10:05:37.934Z",
+  "ranking": "hardStrict desc → hardComposite desc → basePass desc → latency asc",
+  "metrics": {
+    "base": "strict pass / 28 everyday scenarios",
+    "hardStrict": "strict pass / 25 Parse-25 scenarios",
+    "hardComposite": "mean quality composite 0–100 from hard-25 harness"
+  },
+  "leaderboard": [
+    {
+      "rank": 1,
+      "modelId": "qwen/qwen3-4b-2507",
+      "basePass": 24,
+      "baseTotal": 28,
+      "baseMeanMs": 4912.75,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-qwen-qwen3-4b-2507-results.json",
+      "hardStrict": 20,
+      "hardTotal": 25,
+      "hardComposite": 93.5,
+      "hardMeanMs": 7248.36,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-qwen-qwen3-4b-2507-eval-parse-results.json"
+    },
+    {
+      "rank": 2,
+      "modelId": "nvidia/nemotron-3-nano-4b",
+      "basePass": 14,
+      "baseTotal": 28,
+      "baseMeanMs": 32283.785714285714,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-nvidia-nemotron-3-nano-4b-results.json",
+      "hardStrict": 13,
+      "hardTotal": 25,
+      "hardComposite": 88.7,
+      "hardMeanMs": 47498.6,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-nvidia-nemotron-3-nano-4b-eval-parse-results.json"
+    },
+    {
+      "rank": 3,
+      "modelId": "qwen/qwen3-1.7b",
+      "basePass": 11,
+      "baseTotal": 28,
+      "baseMeanMs": 12792.67857142857,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-qwen-qwen3-1.7b-results.json",
+      "hardStrict": 7,
+      "hardTotal": 25,
+      "hardComposite": 82.7,
+      "hardMeanMs": 25051.736842105263,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-qwen-qwen3-1.7b-eval-parse-results.json"
+    },
+    {
+      "rank": 4,
+      "modelId": "qwen3-1.7b-money-spent-tracker",
+      "basePass": 13,
+      "baseTotal": 28,
+      "baseMeanMs": 1587.75,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-qwen3-1.7b-money-spent-tracker-results.json",
+      "hardStrict": 7,
+      "hardTotal": 25,
+      "hardComposite": 69.3,
+      "hardMeanMs": 1530.8,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-qwen3-1.7b-money-spent-tracker-non-thinking-results.json"
+    },
+    {
+      "rank": 5,
+      "modelId": "liquid/lfm2.5-1.2b",
+      "basePass": 0,
+      "baseTotal": 28,
+      "baseMeanMs": 3634.5714285714284,
+      "baseSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-base-liquid-lfm2.5-1.2b-results.json",
+      "hardStrict": 0,
+      "hardTotal": 25,
+      "hardComposite": 24.7,
+      "hardMeanMs": 11276.470588235294,
+      "hardSourcePath": "/Users/izzadev/Projects/chat-keuangan-bench/docs/results/runs/2026-07-17-parse-hard-25-liquid-lfm2.5-1.2b-eval-parse-results.json"
+    }
+  ]
+}

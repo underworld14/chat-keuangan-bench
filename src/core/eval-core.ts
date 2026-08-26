@@ -11,8 +11,11 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import {
   applyLlmConfigOverrides,
+  detectThinking,
   getLlmConfig,
   resolveModel,
+  type LlmProviderKind,
+  type ThinkingMode,
 } from "./llm-client.ts";
 
 config({ path: resolve(import.meta.dirname, "../../.env") });
@@ -819,32 +822,54 @@ export interface ParseMessageOptions {
   noFallback?: boolean;
   /** Abort the underlying generation after this signal fires. */
   abortSignal?: AbortSignal;
+  /** Ask the server to toggle reasoning. Defaults to `auto` (leave the server as configured). */
+  thinking?: ThinkingMode;
+  /**
+   * Which AI SDK provider to use. Bench callers leave this unset (openai-compatible / LM Studio).
+   * SFT generation passes `openai` so structuredOutputs actually send a JSON schema.
+   */
+  provider?: LlmProviderKind;
 }
 
 export async function parseMessage(
   modelId: string,
   text: string,
   options?: ParseMessageOptions,
-): Promise<{ parsed: ParsedFinance; ms: number; path: "structured" | "plain-json" }> {
+): Promise<{
+  parsed: ParsedFinance;
+  ms: number;
+  path: "structured" | "plain-json";
+  thinkingObserved: boolean;
+}> {
   const systemPrompt = options?.systemPrompt ?? SYSTEM_PROMPT;
   const prompt = options?.userPrefix ? `${options.userPrefix}\n\n${text}` : text;
   const t0 = Date.now();
-  const model = resolveModel(modelId);
+  const model = resolveModel(modelId, {
+    thinking: options?.thinking,
+    provider: options?.provider,
+  });
+  // Official OpenAI provider treats many cloud teachers (mimo, deepseek-*) as reasoning
+  // models and warns/rejects `temperature`. Omit it there; benches still pin temp=0.
   const genBase = {
     model,
     system: systemPrompt,
     prompt,
-    temperature: 0,
     maxOutputTokens: 2048,
     abortSignal: options?.abortSignal,
+    ...(options?.provider === "openai" ? {} : { temperature: 0 as const }),
   };
 
   try {
-    const { output } = await generateText({
+    const { output, reasoningText } = await generateText({
       ...genBase,
       output: Output.object({ schema: financeParseSchema }),
     });
-    return { parsed: output, ms: Date.now() - t0, path: "structured" };
+    return {
+      parsed: output,
+      ms: Date.now() - t0,
+      path: "structured",
+      thinkingObserved: detectThinking({ reasoning: reasoningText }),
+    };
   } catch (err) {
     if (options?.noFallback) throw err;
     const r = await generateText({
@@ -852,7 +877,123 @@ export async function parseMessage(
       system: `${systemPrompt}\n\nKembalikan HANYA JSON valid sesuai schema. Tanpa markdown fence.`,
     });
     const parsed = parseFinanceJson(r.text);
-    return { parsed, ms: Date.now() - t0, path: "plain-json" };
+    return {
+      parsed,
+      ms: Date.now() - t0,
+      path: "plain-json",
+      // A server with no reasoning parser leaks <think> into the text itself, so check
+      // both: the SDK's split-out field and the raw content.
+      thinkingObserved: detectThinking({ reasoning: r.reasoningText, content: r.text }),
+    };
+  }
+}
+
+/**
+ * Blind batch labeling for SFT generation: many messages → many labels in one call.
+ *
+ * The schema wraps `financeParseSchema` per item. Mapping by `id` (not array order) is the
+ * caller's job — this function only guarantees structured output or a hard failure when
+ * `noFallback` is set. Never feed this path through `parseFinanceJson`: its coercers mint
+ * schema-valid wrong gold.
+ */
+export const financeParseBatchSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.number().int().nonnegative(),
+      label: financeParseSchema,
+    }),
+  ),
+});
+
+export type ParsedFinanceBatch = z.infer<typeof financeParseBatchSchema>;
+
+export interface ParseMessagesBatchOptions {
+  systemPrompt?: string;
+  /** Soft ceiling; defaults scale with item count. */
+  maxOutputTokens?: number;
+  noFallback?: boolean;
+  abortSignal?: AbortSignal;
+  thinking?: ThinkingMode;
+  /** SFT passes `openai`; benches leave unset. */
+  provider?: LlmProviderKind;
+}
+
+export async function parseMessagesBatch(
+  modelId: string,
+  items: ReadonlyArray<{ id: number; text: string }>,
+  options?: ParseMessagesBatchOptions,
+): Promise<{
+  parsed: ParsedFinanceBatch;
+  ms: number;
+  path: "structured" | "plain-json";
+  thinkingObserved: boolean;
+}> {
+  if (items.length === 0) {
+    return {
+      parsed: { items: [] },
+      ms: 0,
+      path: "structured",
+      thinkingObserved: false,
+    };
+  }
+
+  const systemPrompt =
+    options?.systemPrompt ??
+    [
+      SYSTEM_PROMPT,
+      "",
+      "BATCH MODE: Anda menerima beberapa pesan bernomor.",
+      'Kembalikan JSON { "items": [ { "id": <sama dengan input>, "label": <hasil parse sesuai schema di atas> }, ... ] }.',
+      "Sertakan SEMUA id, masing-masing tepat sekali. Jangan ubah id. Jangan menambah id lain.",
+    ].join("\n");
+
+  const prompt = [
+    `Parse ${items.length} pesan. Kembalikan JSON { "items": [...] }.`,
+    "",
+    ...items.map((it) => `### id=${it.id}\n${it.text}`),
+  ].join("\n\n");
+
+  const t0 = Date.now();
+  const model = resolveModel(modelId, {
+    thinking: options?.thinking,
+    provider: options?.provider,
+  });
+  const maxOutputTokens = options?.maxOutputTokens ?? Math.max(2048, items.length * 256);
+  const genBase = {
+    model,
+    system: systemPrompt,
+    prompt,
+    maxOutputTokens,
+    abortSignal: options?.abortSignal,
+    ...(options?.provider === "openai" ? {} : { temperature: 0 as const }),
+  };
+
+  try {
+    const { output, reasoningText } = await generateText({
+      ...genBase,
+      output: Output.object({ schema: financeParseBatchSchema }),
+    });
+    return {
+      parsed: output,
+      ms: Date.now() - t0,
+      path: "structured",
+      thinkingObserved: detectThinking({ reasoning: reasoningText }),
+    };
+  } catch (err) {
+    if (options?.noFallback) throw err;
+    const r = await generateText({
+      ...genBase,
+      system: `${systemPrompt}\n\nKembalikan HANYA JSON valid sesuai schema batch. Tanpa markdown fence.`,
+    });
+    const block = extractJsonBlock(r.text);
+    if (!block) throw new Error("No JSON block in batch model response");
+    const parsed = financeParseBatchSchema.parse(JSON.parse(block));
+    return {
+      parsed,
+      ms: Date.now() - t0,
+      path: "plain-json",
+      thinkingObserved: detectThinking({ reasoning: r.reasoningText, content: r.text }),
+    };
   }
 }
 

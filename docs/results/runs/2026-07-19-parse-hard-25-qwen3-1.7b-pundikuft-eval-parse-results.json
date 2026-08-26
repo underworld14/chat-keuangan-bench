@@ -1,0 +1,1156 @@
+{
+  "kind": "parse-hard-25",
+  "runAt": "2026-07-19T07:55:04.872Z",
+  "label": "eval-parse",
+  "modelId": "qwen3-1.7b-pundikuft",
+  "model": "qwen3-1.7b-pundikuft",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "strictPass": 12,
+  "totalScenarios": 25,
+  "meanComposite": 79.2,
+  "avgMs": 1540.48,
+  "results": [
+    {
+      "scenarioId": "hard-cilok-qty-44",
+      "strictPass": false,
+      "ms": 2575,
+      "promptTokens": 1205,
+      "completionTokens": 136,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 5000 [cilok]",
+        "missing/unmatched expected: pengeluaran 5000 [cilok]",
+        "missing/unmatched expected: pengeluaran 5000 [cilok]",
+        "missing/unmatched expected: pengeluaran 5000 [cilok]",
+        "extra entries: pengeluaran 5000 \"jajan cilok 4 tusuk 5rb\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 40,
+          "typeDirection": 40,
+          "dateHint": 40,
+          "entryCount": 25,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 28
+        },
+        "compositeScore": 53,
+        "tier": "partially_usable",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 5000 [cilok]",
+          "missing/unmatched expected: pengeluaran 5000 [cilok]",
+          "missing/unmatched expected: pengeluaran 5000 [cilok]",
+          "missing/unmatched expected: pengeluaran 5000 [cilok]",
+          "extra entries: pengeluaran 5000 \"jajan cilok 4 tusuk 5rb\""
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 25000",
+            "credit": 100,
+            "detail": "pulsa 25rb → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 100,
+            "detail": "jajan cilok 4 tusuk 5rb → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 0,
+            "detail": "no match"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 0,
+            "detail": "no match"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-cod-jnt-tip",
+      "strictPass": false,
+      "ms": 2414,
+      "promptTokens": 1210,
+      "completionTokens": 141,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 150000 [sepatu]",
+        "extra entries: pengeluaran 15000 \"bayar sepatu 150rb\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 60,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 88,
+        "tier": "usable_with_edit",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 150000 [sepatu]",
+          "extra entries: pengeluaran 15000 \"bayar sepatu 150rb\""
+        ],
+        "qualityNotes": [
+          "Near-correct — minor edit in confirm UI would suffice"
+        ],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 150000",
+            "credit": 60,
+            "detail": "bayar sepatu 150rb → type✓ amount✗(15000≠150000) date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 100,
+            "detail": "kasih tip kurir 5rb → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-alfamart-price-copy",
+      "strictPass": false,
+      "ms": 2020,
+      "promptTokens": 1207,
+      "completionTokens": 133,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 6000 [air,mineral]"
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 67,
+          "typeDirection": 67,
+          "dateHint": 67,
+          "entryCount": 75,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 67
+        },
+        "compositeScore": 76,
+        "tier": "usable_with_edit",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 6000 [air,mineral]"
+        ],
+        "qualityNotes": [
+          "Model surfaced ambiguity in catatan — good for confirm UI"
+        ],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 63700",
+            "credit": 100,
+            "detail": "belanja di Alfamart → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 2000",
+            "credit": 95,
+            "detail": "parkir → type✓ amount✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 6000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-bonus-cair-gopay",
+      "strictPass": true,
+      "ms": 1388,
+      "promptTokens": 1201,
+      "completionTokens": 84,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pemasukan 2500000",
+            "credit": 100,
+            "detail": "bonus proyek cair 2,5jt → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-td-spp-3anak",
+      "strictPass": false,
+      "ms": 1263,
+      "promptTokens": 1194,
+      "completionTokens": 83,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 250000 [spp]",
+        "missing/unmatched expected: pengeluaran 250000 [spp]",
+        "missing/unmatched expected: pengeluaran 250000 [spp]",
+        "extra entries: pengeluaran 25000 \"bayar spp 3 anak di sekolah\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 7,
+          "typeDirection": 33,
+          "dateHint": 33,
+          "entryCount": 50,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 33
+        },
+        "compositeScore": 44,
+        "tier": "misleading",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 250000 [spp]",
+          "missing/unmatched expected: pengeluaran 250000 [spp]",
+          "missing/unmatched expected: pengeluaran 250000 [spp]",
+          "extra entries: pengeluaran 25000 \"bayar spp 3 anak di sekolah\""
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 250000",
+            "credit": 60,
+            "detail": "bayar spp 3 anak di sekolah → type✓ amount✗(25000≠250000) date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 250000",
+            "credit": 0,
+            "detail": "no match"
+          },
+          {
+            "label": "pengeluaran 250000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-voice-ojek-correct",
+      "strictPass": false,
+      "ms": 382,
+      "promptTokens": 1211,
+      "completionTokens": 21,
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 35000 [ojek]"
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 0,
+          "typeDirection": 0,
+          "dateHint": 0,
+          "entryCount": 75,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 0
+        },
+        "compositeScore": 33,
+        "tier": "broken",
+        "strictIssues": [
+          "marked bukan_transaksi but expected entries",
+          "missing/unmatched expected: pengeluaran 35000 [ojek]"
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 35000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-tf-supplier-admin",
+      "strictPass": false,
+      "ms": 1330,
+      "promptTokens": 1196,
+      "completionTokens": 88,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 1500000 [supplier,transfer,tf]",
+        "missing/unmatched expected: pengeluaran 2500 [admin]",
+        "extra entries: pengeluaran 15000 \"transfer ke supplier 1,5jt kena biaya admin 2500\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 10,
+          "typeDirection": 50,
+          "dateHint": 50,
+          "entryCount": 75,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 50
+        },
+        "compositeScore": 53,
+        "tier": "partially_usable",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 1500000 [supplier,transfer,tf]",
+          "missing/unmatched expected: pengeluaran 2500 [admin]",
+          "extra entries: pengeluaran 15000 \"transfer ke supplier 1,5jt kena biaya admin 2500\""
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 1500000",
+            "credit": 55,
+            "detail": "transfer ke supplier 1,5jt kena biaya ad → type✓ amount✗(15000≠1500000) desc✓"
+          },
+          {
+            "label": "pengeluaran 2500",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-listrik-cashback-mixed",
+      "strictPass": false,
+      "ms": 1977,
+      "promptTokens": 1205,
+      "completionTokens": 132,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 200000 [listrik]",
+        "extra entries: pengeluaran 20000 \"listrik\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 60,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 88,
+        "tier": "usable_with_edit",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 200000 [listrik]",
+          "extra entries: pengeluaran 20000 \"listrik\""
+        ],
+        "qualityNotes": [
+          "Near-correct — minor edit in confirm UI would suffice"
+        ],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 200000",
+            "credit": 60,
+            "detail": "listrik → type✓ amount✗(20000≠200000) date✓ desc✓"
+          },
+          {
+            "label": "pemasukan 25000",
+            "credit": 100,
+            "detail": "cashback OVO 25rb → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-vent-no-nominal",
+      "strictPass": true,
+      "ms": 354,
+      "promptTokens": 1203,
+      "completionTokens": 21,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 0,
+          "typeDirection": 0,
+          "dateHint": 0,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [
+          "Correctly flagged bukan_transaksi"
+        ],
+        "partialMatches": [],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-hp-2juta",
+      "strictPass": true,
+      "ms": 1485,
+      "promptTokens": 1202,
+      "completionTokens": 83,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 2000000",
+            "credit": 100,
+            "detail": "beli HP baru → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-patungan-tim",
+      "strictPass": false,
+      "ms": 1306,
+      "promptTokens": 1201,
+      "completionTokens": 77,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 90000 [makan,tim,bagian,patungan]",
+        "extra entries: pemasukan 54000 \"makan bareng tim\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 0,
+          "typeDirection": 0,
+          "dateHint": 0,
+          "entryCount": 100,
+          "noHallucination": 35,
+          "nonTransaction": 100,
+          "ambiguHandling": 0
+        },
+        "compositeScore": 22,
+        "tier": "misleading",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 90000 [makan,tim,bagian,patungan]",
+          "extra entries: pemasukan 54000 \"makan bareng tim\""
+        ],
+        "qualityNotes": [
+          "Spurious pemasukan detected (phantom/zero income)"
+        ],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 90000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [
+          {
+            "type": "pemasukan",
+            "tanggal_hint": "hari_ini",
+            "deskripsi": "makan bareng tim",
+            "jumlah": 54000,
+            "kategori": "pengeluaran",
+            "vendor": "tim",
+            "confidence": "high",
+            "ambigu": false,
+            "catatan_ambigu": ""
+          }
+        ],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": true,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-atk-3line",
+      "strictPass": true,
+      "ms": 2889,
+      "promptTokens": 1213,
+      "completionTokens": 193,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 30000",
+            "credit": 95,
+            "detail": "pulpen 2 lusin 30rb → type✓ amount✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 55000",
+            "credit": 95,
+            "detail": "kertas hvs 1 rim 55rb → type✓ amount✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 8000",
+            "credit": 95,
+            "detail": "map plastik 8rb → type✓ amount✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-typo-beras-minyak",
+      "strictPass": false,
+      "ms": 2156,
+      "promptTokens": 1208,
+      "completionTokens": 142,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 68000 [beras]",
+        "extra entries: pengeluaran 50000 \"bli beras 5kg\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 60,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 88,
+        "tier": "usable_with_edit",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 68000 [beras]",
+          "extra entries: pengeluaran 50000 \"bli beras 5kg\""
+        ],
+        "qualityNotes": [
+          "Near-correct — minor edit in confirm UI would suffice"
+        ],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 68000",
+            "credit": 60,
+            "detail": "bli beras 5kg → type✓ amount✗(50000≠68000) date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 38000",
+            "credit": 100,
+            "detail": "minyak goreng 2 ltr → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-sep-wifi-token",
+      "strictPass": true,
+      "ms": 1961,
+      "promptTokens": 1204,
+      "completionTokens": 131,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 350000",
+            "credit": 100,
+            "detail": "bayar wifi → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 102500",
+            "credit": 100,
+            "detail": "bayar token listrik → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-ksuffix-decimal",
+      "strictPass": true,
+      "ms": 1984,
+      "promptTokens": 1197,
+      "completionTokens": 133,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 27500",
+            "credit": 100,
+            "detail": "ngopi tadi 27.5k → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 2000",
+            "credit": 100,
+            "detail": "parkir 2k doang → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-future-kulkas",
+      "strictPass": true,
+      "ms": 355,
+      "promptTokens": 1203,
+      "completionTokens": 21,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 0,
+          "typeDirection": 0,
+          "dateHint": 0,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [
+          "Correctly flagged bukan_transaksi"
+        ],
+        "partialMatches": [],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-past-future-dp",
+      "strictPass": true,
+      "ms": 1155,
+      "promptTokens": 1202,
+      "completionTokens": 76,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 5000000",
+            "credit": 100,
+            "detail": "bayar DP motor → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-refund-tokopedia",
+      "strictPass": true,
+      "ms": 1285,
+      "promptTokens": 1197,
+      "completionTokens": 85,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pemasukan 85000",
+            "credit": 100,
+            "detail": "refund dari pembelian barang di Tokopedi → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-diskon-net-price",
+      "strictPass": false,
+      "ms": 1204,
+      "promptTokens": 1207,
+      "completionTokens": 77,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 200000 [sepatu]",
+        "extra entries: pengeluaran 200 \"beli sepatu\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 20,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 76,
+        "tier": "usable_with_edit",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 200000 [sepatu]",
+          "extra entries: pengeluaran 200 \"beli sepatu\""
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 200000",
+            "credit": 55,
+            "detail": "beli sepatu → type✓ amount✗(200≠200000) desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-slang-ceban-goceng",
+      "strictPass": false,
+      "ms": 347,
+      "promptTokens": 1194,
+      "completionTokens": 21,
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 10000 [teh]",
+        "missing/unmatched expected: pengeluaran 5000 [gorengan]"
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 0,
+          "typeDirection": 0,
+          "dateHint": 0,
+          "entryCount": 50,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 0
+        },
+        "compositeScore": 30,
+        "tier": "broken",
+        "strictIssues": [
+          "marked bukan_transaksi but expected entries",
+          "missing/unmatched expected: pengeluaran 10000 [teh]",
+          "missing/unmatched expected: pengeluaran 5000 [gorengan]"
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 10000",
+            "credit": 0,
+            "detail": "no match"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-spelled-setengah-juta",
+      "strictPass": false,
+      "ms": 1219,
+      "promptTokens": 1192,
+      "completionTokens": 80,
+      "issues": [
+        "missing/unmatched expected: pemasukan 500000 [bonus]",
+        "extra entries: pemasukan 1000000 \"bonus setengah juta\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 20,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 76,
+        "tier": "usable_with_edit",
+        "strictIssues": [
+          "missing/unmatched expected: pemasukan 500000 [bonus]",
+          "extra entries: pemasukan 1000000 \"bonus setengah juta\""
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pemasukan 500000",
+            "credit": 60,
+            "detail": "bonus setengah juta → type✓ amount✗(1000000≠500000) date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-cancelled-jaket",
+      "strictPass": true,
+      "ms": 354,
+      "promptTokens": 1198,
+      "completionTokens": 21,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 0,
+          "typeDirection": 0,
+          "dateHint": 0,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [
+          "Correctly flagged bukan_transaksi"
+        ],
+        "partialMatches": [],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-daging-2kg",
+      "strictPass": false,
+      "ms": 1481,
+      "promptTokens": 1198,
+      "completionTokens": 86,
+      "issues": [
+        "missing/unmatched expected: pengeluaran 135000 [daging]",
+        "missing/unmatched expected: pengeluaran 135000 [daging]",
+        "extra entries: pengeluaran 23000 \"beli daging sapi 2kg\""
+      ],
+      "error": null,
+      "quality": {
+        "strictPass": false,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 10,
+          "typeDirection": 50,
+          "dateHint": 50,
+          "entryCount": 75,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 50
+        },
+        "compositeScore": 53,
+        "tier": "partially_usable",
+        "strictIssues": [
+          "missing/unmatched expected: pengeluaran 135000 [daging]",
+          "missing/unmatched expected: pengeluaran 135000 [daging]",
+          "extra entries: pengeluaran 23000 \"beli daging sapi 2kg\""
+        ],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 135000",
+            "credit": 55,
+            "detail": "beli daging sapi 2kg → type✓ amount✗(23000≠135000) desc✓"
+          },
+          {
+            "label": "pengeluaran 135000",
+            "credit": 0,
+            "detail": "no match"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-emoji-wa-noise",
+      "strictPass": true,
+      "ms": 2039,
+      "promptTokens": 1205,
+      "completionTokens": 125,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 50000",
+            "credit": 100,
+            "detail": "bensin → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 35000",
+            "credit": 100,
+            "detail": "makan siang → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    },
+    {
+      "scenarioId": "hard-rekap-5line",
+      "strictPass": true,
+      "ms": 3589,
+      "promptTokens": 1220,
+      "completionTokens": 240,
+      "issues": [],
+      "error": null,
+      "quality": {
+        "strictPass": true,
+        "strictAltPass": false,
+        "scores": {
+          "amount": 100,
+          "typeDirection": 100,
+          "dateHint": 100,
+          "entryCount": 100,
+          "noHallucination": 100,
+          "nonTransaction": 100,
+          "ambiguHandling": 100
+        },
+        "compositeScore": 100,
+        "tier": "excellent",
+        "strictIssues": [],
+        "qualityNotes": [],
+        "partialMatches": [
+          {
+            "label": "pengeluaran 20000",
+            "credit": 100,
+            "detail": "sarapan → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 40000",
+            "credit": 100,
+            "detail": "bensin → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 5000",
+            "credit": 100,
+            "detail": "parkir → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 30000",
+            "credit": 100,
+            "detail": "makan siang → type✓ amount✓ date✓ desc✓"
+          },
+          {
+            "label": "pengeluaran 18000",
+            "credit": 100,
+            "detail": "kopi sore → type✓ amount✓ date✓ desc✓"
+          }
+        ],
+        "extraEntries": [],
+        "zeroAmountEntries": 0,
+        "spuriousIncome": false,
+        "priceCopySuspect": false
+      }
+    }
+  ]
+}

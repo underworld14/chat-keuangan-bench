@@ -1,0 +1,149 @@
+{
+  "kind": "parse-base",
+  "suite": "base",
+  "runAt": "2026-07-20T09:00:46.371Z",
+  "modelId": "qwen3.5-2b-mlx",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "passCount": 16,
+  "total": 28,
+  "meanMs": 2699.25,
+  "byStyle": {
+    "casual_slang": {
+      "pass": 2,
+      "total": 3
+    },
+    "income": {
+      "pass": 4,
+      "total": 4
+    },
+    "whatsapp_short": {
+      "pass": 1,
+      "total": 2
+    },
+    "typo_slang": {
+      "pass": 1,
+      "total": 1
+    },
+    "ambiguous_amount": {
+      "pass": 1,
+      "total": 3
+    },
+    "multi_entry": {
+      "pass": 0,
+      "total": 2
+    },
+    "formal_dictation": {
+      "pass": 2,
+      "total": 4
+    },
+    "non_transaction": {
+      "pass": 2,
+      "total": 2
+    },
+    "pesantren": {
+      "pass": 2,
+      "total": 4
+    },
+    "split_bill": {
+      "pass": 0,
+      "total": 1
+    },
+    "bulk_list": {
+      "pass": 0,
+      "total": 1
+    },
+    "future_intent": {
+      "pass": 1,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "belanja-bulanan-800an",
+      "issues": [
+        "marked bukan_transaksi but expected entries",
+        "missing/unmatched expected: pengeluaran 800000 [belanja]"
+      ]
+    },
+    {
+      "id": "transfer-ortu-buku",
+      "issues": [
+        "missing/unmatched expected: pemasukan 500000 [transfer]",
+        "missing/unmatched expected: pengeluaran 80000 [buku]",
+        "extra entries: pemasukan 50000 \"transfer dari ortu\"; pengeluaran 8000 \"beli buku\""
+      ]
+    },
+    {
+      "id": "atk-gojek-parkir-formal",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 350000 [atk]",
+        "extra entries: pengeluaran 35000 \"beli ATK buat kantor\""
+      ]
+    },
+    {
+      "id": "split-bill-makan",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 30000 [makan]",
+        "extra entries: pemasukan 30000 \"makan siang bareng 4 orang\"; pengeluaran 7500 \"makan siang bareng 4 orang (punyaku 30rb)\""
+      ]
+    },
+    {
+      "id": "bulk-wa-list",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 87500 [indomaret]",
+        "extra entries: pemasukan 87500 \"Indomaret\""
+      ]
+    },
+    {
+      "id": "listrik-500rb",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 500000 [listrik]",
+        "extra entries: pengeluaran 50000 \"bayar listrik\""
+      ]
+    },
+    {
+      "id": "shopee-cod-2-item",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 45000 [case,hp]",
+        "extra entries: pengeluaran 45000 \"Beli COD Shopee (45rb)\""
+      ]
+    },
+    {
+      "id": "gopay-topup-100k",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 100000 [gopay,top]",
+        "extra entries: pemasukan 0 \"top up gopay 100k\""
+      ]
+    },
+    {
+      "id": "ojek-15rb-atau-50rb-typo",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 50000 [gojek]",
+        "extra entries: pemasukan 50000 \"Gojek ke masjid\""
+      ]
+    },
+    {
+      "id": "mixed-income-expense-santri",
+      "issues": [
+        "missing/unmatched expected: pemasukan 750000 [setoran]",
+        "missing/unmatched expected: pengeluaran 120000 [buku]",
+        "extra entries: pemasukan 750000 \"setoran wali Ahmad\"; pengeluaran 120000 \"beli buku pelajaran\""
+      ]
+    },
+    {
+      "id": "voice-rambling-pulsa",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 50000 [pulsa]",
+        "missing/unmatched expected: pengeluaran 25000 [kuota]",
+        "extra entries: pengeluaran 75000 \"Beli pulsa dan kuota internet untuk anak kos\""
+      ]
+    },
+    {
+      "id": "zakat-fitrah-keluarga",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 180000 [zakat]",
+        "extra entries: pengeluaran 18000 \"zakat fitrah 4 orang @45rb di mushola\""
+      ]
+    }
+  ]
+}

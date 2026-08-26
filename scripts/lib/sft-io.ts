@@ -20,6 +20,8 @@ import {
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import type { ParsedFinance } from "../../src/core/eval-core.ts";
+import { LeakError } from "../../src/core/parse-leakguard.ts";
+import { RejectError } from "./sft-validate.ts";
 
 export type RowSplit = "train" | "eval_iid" | "eval_compositional";
 
@@ -53,6 +55,31 @@ export type RejectRow = {
   text?: string;
   rawContent?: string;
 };
+
+/**
+ * Build the on-disk record for a failed attempt.
+ *
+ * `text` is the whole point. The generator used to omit it, so rejects.jsonl carried the
+ * verdict and not the evidence: every agreement reject read `"text": null`, and answering
+ * "is the teacher wrong, or is the spec wrong?" — the only question that matters, since the
+ * blind parse is frequently the one that is right — meant rebuilding the cell's prompt by hand.
+ */
+export function toRejectRow(
+  spec: { planIndex: number; cellId: string },
+  err: unknown,
+  text: string | null,
+): RejectRow {
+  const phase =
+    err instanceof RejectError ? err.phase : err instanceof LeakError ? "text:leak" : "transport";
+  return {
+    planIndex: spec.planIndex,
+    cellId: spec.cellId,
+    phase,
+    message: err instanceof Error ? err.message : String(err),
+    ...(err instanceof RejectError && err.issues !== undefined ? { issues: err.issues } : {}),
+    ...(text !== null ? { text } : {}),
+  };
+}
 
 export function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");

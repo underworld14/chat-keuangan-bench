@@ -1,0 +1,77 @@
+{
+  "kind": "parse-base",
+  "suite": "base",
+  "runAt": "2026-07-17T13:33:37.777Z",
+  "modelId": "google/gemma-4-e2b",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "passCount": 26,
+  "total": 28,
+  "meanMs": 11625.285714285714,
+  "byStyle": {
+    "casual_slang": {
+      "pass": 2,
+      "total": 3
+    },
+    "income": {
+      "pass": 4,
+      "total": 4
+    },
+    "whatsapp_short": {
+      "pass": 2,
+      "total": 2
+    },
+    "typo_slang": {
+      "pass": 1,
+      "total": 1
+    },
+    "ambiguous_amount": {
+      "pass": 2,
+      "total": 3
+    },
+    "multi_entry": {
+      "pass": 2,
+      "total": 2
+    },
+    "formal_dictation": {
+      "pass": 4,
+      "total": 4
+    },
+    "non_transaction": {
+      "pass": 2,
+      "total": 2
+    },
+    "pesantren": {
+      "pass": 4,
+      "total": 4
+    },
+    "split_bill": {
+      "pass": 1,
+      "total": 1
+    },
+    "bulk_list": {
+      "pass": 1,
+      "total": 1
+    },
+    "future_intent": {
+      "pass": 1,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "user-example-maren-bakmi",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 12000 [bakmi]",
+        "missing/unmatched expected: pengeluaran 12000 [bakmi]",
+        "extra entries: pengeluaran 14000 \"Makan bakmi 2 bungkus\""
+      ]
+    },
+    {
+      "id": "belanja-bulanan-800an",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 800000 [belanja]",
+        "extra entries: pengeluaran 800 \"Belanja bulanan\""
+      ]
+    }
+  ]
+}

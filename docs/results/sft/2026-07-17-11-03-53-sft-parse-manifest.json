@@ -1,0 +1,1085 @@
+{
+  "bench": "chat-keuangan-sft-parse",
+  "version": "1.0.0",
+  "generatedAt": "2026-07-17T11:36:10.737Z",
+  "teacher": "google/gemini-3.1-flash-lite",
+  "baseURL": "https://openrouter.ai/api/v1",
+  "seed": 42,
+  "textTemperature": 0.9,
+  "labelTemperature": 0,
+  "gitSha": "374c510",
+  "dirty": true,
+  "systemPromptSha256": "2477c63f347488a978f41dfbaefb035cfb9f8c51329d4b6902637626ec9a879a",
+  "systemPromptChars": 3055,
+  "systemPromptModeRequested": "mix",
+  "systemPromptModeRealized": {
+    "short": 189,
+    "full": 986,
+    "none": 57
+  },
+  "taxonomy": {
+    "cells": 339,
+    "plannedStats": {
+      "cells": 339,
+      "rows": 2034,
+      "rowsPerCell": 6,
+      "marginals": {
+        "direction": {
+          "realized": {
+            "out": 0.5486725663716814,
+            "in": 0.19469026548672566,
+            "mixed": 0.11799410029498525,
+            "non_tx": 0.13864306784660768
+          },
+          "target": {
+            "out": 0.56,
+            "in": 0.2,
+            "mixed": 0.12,
+            "non_tx": 0.12
+          },
+          "maxAbsDeltaPp": 1.8643067846607686,
+          "scope": 339
+        },
+        "cardinality": {
+          "realized": {
+            "zero": 0.13864306784660768,
+            "single": 0.4896755162241888,
+            "dua": 0.19469026548672566,
+            "tiga": 0.10914454277286136,
+            "banyak": 0.06784660766961652
+          },
+          "target": {
+            "zero": 0.12,
+            "single": 0.5,
+            "dua": 0.2,
+            "tiga": 0.11,
+            "banyak": 0.07
+          },
+          "maxAbsDeltaPp": 1.8643067846607686,
+          "scope": 339
+        },
+        "magnitude": {
+          "realized": {
+            "receh": 0.11926605504587157,
+            "kecil": 0.37920489296636084,
+            "sedang": 0.3211009174311927,
+            "besar": 0.14067278287461774,
+            "jumbo": 0.039755351681957186
+          },
+          "target": {
+            "receh": 0.12,
+            "kecil": 0.38,
+            "sedang": 0.32,
+            "besar": 0.14,
+            "jumbo": 0.04
+          },
+          "maxAbsDeltaPp": 0.11009174311926717,
+          "scope": 327,
+          "note": "amount-bearing cells only — magnitude is undefined without a nominal"
+        },
+        "dateHint": {
+          "realized": {
+            "tidak_jelas": 0.35398230088495575,
+            "hari_ini": 0.37168141592920356,
+            "kemarin": 0.18289085545722714,
+            "minggu_ini": 0.05014749262536873,
+            "bulan_ini": 0.04129793510324484,
+            "lusa": 0
+          },
+          "target": {
+            "tidak_jelas": 0.34,
+            "hari_ini": 0.38,
+            "kemarin": 0.18,
+            "minggu_ini": 0.05,
+            "bulan_ini": 0.04,
+            "lusa": 0
+          },
+          "maxAbsDeltaPp": 1.3982300884955723,
+          "scope": 339
+        },
+        "noise": {
+          "realized": {
+            "bersih": 0.20058997050147492,
+            "wa_ringkas": 0.44837758112094395,
+            "voice_rambling": 0.12979351032448377,
+            "typo_berat": 0.12094395280235988,
+            "emoji_format": 0.10029498525073746
+          },
+          "target": {
+            "bersih": 0.2,
+            "wa_ringkas": 0.45,
+            "voice_rambling": 0.13,
+            "typo_berat": 0.12,
+            "emoji_format": 0.1
+          },
+          "maxAbsDeltaPp": 0.16224188790560645,
+          "scope": 339
+        },
+        "register": {
+          "realized": {
+            "jaksel_gaul": 0.22123893805309736,
+            "pesantren": 0.20058997050147492,
+            "baku": 0.17994100294985252,
+            "jawa": 0.13864306784660768,
+            "betawi": 0.07964601769911504,
+            "sunda": 0.07964601769911504,
+            "medan": 0.05014749262536873,
+            "minang": 0.029498525073746312,
+            "makassar_timur": 0.02064896755162242
+          },
+          "target": {
+            "jaksel_gaul": 0.22,
+            "pesantren": 0.2,
+            "baku": 0.18,
+            "jawa": 0.14,
+            "betawi": 0.08,
+            "sunda": 0.08,
+            "medan": 0.05,
+            "minang": 0.03,
+            "makassar_timur": 0.02
+          },
+          "maxAbsDeltaPp": 0.13569321533923318,
+          "scope": 339
+        },
+        "registerIntensity": {
+          "realized": {
+            "sisip": 0.6510791366906474,
+            "campur": 0.29856115107913667,
+            "penuh": 0.050359712230215826
+          },
+          "target": {
+            "sisip": 0.65,
+            "campur": 0.3,
+            "penuh": 0.05
+          },
+          "maxAbsDeltaPp": 0.14388489208633226,
+          "scope": 278,
+          "note": "non-baku cells only"
+        },
+        "rail": {
+          "realized": {
+            "none": 0.44542772861356933,
+            "transfer_bank": 0.12979351032448377,
+            "ewallet": 0.11799410029498525,
+            "tunai": 0.10029498525073746,
+            "qris": 0.07964601769911504,
+            "cod": 0.038348082595870206,
+            "kartu": 0.038348082595870206,
+            "emoney": 0.029498525073746312,
+            "pulsa": 0.02064896755162242
+          },
+          "target": {
+            "none": 0.45,
+            "transfer_bank": 0.13,
+            "ewallet": 0.12,
+            "tunai": 0.1,
+            "qris": 0.08,
+            "cod": 0.04,
+            "kartu": 0.04,
+            "emoney": 0.03,
+            "pulsa": 0.01
+          },
+          "maxAbsDeltaPp": 1.064896755162242,
+          "scope": 339
+        },
+        "correction": {
+          "realized": {
+            "none": 0.8761061946902655,
+            "amount": 0.05014749262536873,
+            "magnitude": 0.02359882005899705,
+            "item": 0.02064896755162242,
+            "cancel": 0.02064896755162242,
+            "direction": 0.008849557522123894
+          },
+          "target": {
+            "none": 0.88,
+            "amount": 0.05,
+            "magnitude": 0.025,
+            "item": 0.02,
+            "cancel": 0.015,
+            "direction": 0.01
+          },
+          "maxAbsDeltaPp": 0.5648967551622419,
+          "scope": 339
+        }
+      },
+      "entryLevel": {
+        "masuk": 708,
+        "keluar": 2406,
+        "pemasukanShare": 0.22736030828516376,
+        "target": 0.23,
+        "deltaPp": -0.26396917148362453
+      },
+      "tiers": {
+        "ordinary": {
+          "cells": 133,
+          "realizedShare": 0.39233038348082594,
+          "target": 0.4,
+          "deltaPp": -0.7669616519174083
+        },
+        "notation": {
+          "cells": 50,
+          "realizedShare": 0.14749262536873156,
+          "target": 0.13,
+          "deltaPp": 1.7492625368731556
+        },
+        "register_noise": {
+          "cells": 23,
+          "realizedShare": 0.06784660766961652,
+          "target": 0.07,
+          "deltaPp": -0.21533923303834884
+        },
+        "direction": {
+          "cells": 50,
+          "realizedShare": 0.14749262536873156,
+          "target": 0.15,
+          "deltaPp": -0.2507374631268433
+        },
+        "non_tx": {
+          "cells": 50,
+          "realizedShare": 0.14749262536873156,
+          "target": 0.15,
+          "deltaPp": -0.2507374631268433
+        },
+        "adversarial": {
+          "cells": 33,
+          "realizedShare": 0.09734513274336283,
+          "target": 0.1,
+          "deltaPp": -0.2654867256637175
+        }
+      },
+      "perAspect": {
+        "ord_single_out": {
+          "cells": 25,
+          "rows": 150,
+          "train": 22,
+          "eval_iid": 2,
+          "eval_compositional": 1
+        },
+        "ord_single_in": {
+          "cells": 6,
+          "rows": 36,
+          "train": 3,
+          "eval_iid": 1,
+          "eval_compositional": 2
+        },
+        "ord_multi_out": {
+          "cells": 15,
+          "rows": 90,
+          "train": 12,
+          "eval_iid": 1,
+          "eval_compositional": 2
+        },
+        "ord_rekap_list": {
+          "cells": 9,
+          "rows": 54,
+          "train": 7,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "ord_vendor_named": {
+          "cells": 12,
+          "rows": 72,
+          "train": 11,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ord_rail_named": {
+          "cells": 9,
+          "rows": 54,
+          "train": 7,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "ord_recurring_bill": {
+          "cells": 9,
+          "rows": 54,
+          "train": 8,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ord_topup_ewallet": {
+          "cells": 6,
+          "rows": 36,
+          "train": 5,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ord_date_relative": {
+          "cells": 12,
+          "rows": 72,
+          "train": 10,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "ord_no_date": {
+          "cells": 12,
+          "rows": 72,
+          "train": 11,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ord_qty_simple": {
+          "cells": 9,
+          "rows": 54,
+          "train": 7,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "ord_wa_wrapper": {
+          "cells": 9,
+          "rows": 54,
+          "train": 7,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "not_dot_separator": {
+          "cells": 9,
+          "rows": 54,
+          "train": 8,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "not_k_suffix_decimal": {
+          "cells": 8,
+          "rows": 48,
+          "train": 6,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "not_spelled_amount": {
+          "cells": 6,
+          "rows": 36,
+          "train": 5,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "not_slang_hokkien": {
+          "cells": 19,
+          "rows": 114,
+          "train": 16,
+          "eval_iid": 0,
+          "eval_compositional": 3
+        },
+        "not_regional_numeral": {
+          "cells": 8,
+          "rows": 48,
+          "train": 7,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "reg_regional_lexicon": {
+          "cells": 10,
+          "rows": 60,
+          "train": 9,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "noi_typo_heavy": {
+          "cells": 7,
+          "rows": 42,
+          "train": 6,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "noi_voice_rambling": {
+          "cells": 6,
+          "rows": 36,
+          "train": 5,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "dir_income_gaji": {
+          "cells": 9,
+          "rows": 54,
+          "train": 8,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "dir_income_refund_cashback": {
+          "cells": 9,
+          "rows": 54,
+          "train": 7,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "dir_income_transfer_masuk": {
+          "cells": 9,
+          "rows": 54,
+          "train": 8,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "dir_mixed_message": {
+          "cells": 11,
+          "rows": 66,
+          "train": 9,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "dir_lexical_trap": {
+          "cells": 6,
+          "rows": 36,
+          "train": 5,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "dir_topup_not_income": {
+          "cells": 6,
+          "rows": 36,
+          "train": 5,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ntx_curhat": {
+          "cells": 14,
+          "rows": 84,
+          "train": 13,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ntx_future_intent": {
+          "cells": 18,
+          "rows": 108,
+          "train": 17,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "ntx_cancelled": {
+          "cells": 7,
+          "rows": 42,
+          "train": 5,
+          "eval_iid": 1,
+          "eval_compositional": 1
+        },
+        "ntx_query": {
+          "cells": 11,
+          "rows": 66,
+          "train": 10,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_correction_amount": {
+          "cells": 5,
+          "rows": 30,
+          "train": 4,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_correction_magnitude": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_price_copy_bait": {
+          "cells": 5,
+          "rows": 30,
+          "train": 4,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_qty_x_unit": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_split_share": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_discount_net": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_fee_plus_principal": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_fuzzy_amount": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_past_plus_future": {
+          "cells": 3,
+          "rows": 18,
+          "train": 2,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        },
+        "adv_phantom_income_bait": {
+          "cells": 2,
+          "rows": 12,
+          "train": 1,
+          "eval_iid": 1,
+          "eval_compositional": 0
+        }
+      },
+      "splits": {
+        "train": 282,
+        "eval_iid": 40,
+        "eval_compositional": 17
+      },
+      "coverage": {
+        "aspectsTotal": 40,
+        "aspectsBelowFloor": [],
+        "aspectsWithoutTrain": [],
+        "aspectsWithoutEval": [],
+        "tokensBelowFloor": [],
+        "holdoutTokensLeakedToTrain": [],
+        "tokenTrainCounts": {
+          "cepek": 3,
+          "gopek": 3,
+          "seceng": 0,
+          "ceceng": 3,
+          "noceng": 0,
+          "goceng": 3,
+          "ceban": 3,
+          "goban": 3,
+          "cetiao": 0,
+          "gotiao": 3,
+          "gocap": 3,
+          "sejuta": 2,
+          "setengah juta": 3,
+          "seperempat juta": 3,
+          "sewu": 3,
+          "rong ewu": 3,
+          "limang ewu": 2,
+          "seket ewu": 3,
+          "selawe ewu": 1
+        }
+      }
+    }
+  },
+  "realized": {
+    "rows": 1232,
+    "byAspect": {
+      "dir_income_transfer_masuk": 31,
+      "ntx_curhat": 74,
+      "ntx_future_intent": 92,
+      "ord_single_in": 18,
+      "ntx_cancelled": 31,
+      "ntx_query": 42,
+      "not_k_suffix_decimal": 26,
+      "ord_date_relative": 66,
+      "ord_rekap_list": 36,
+      "adv_past_plus_future": 17,
+      "ord_recurring_bill": 35,
+      "ord_rail_named": 37,
+      "dir_topup_not_income": 18,
+      "ord_vendor_named": 44,
+      "ord_single_out": 75,
+      "not_regional_numeral": 33,
+      "ord_multi_out": 66,
+      "not_spelled_amount": 29,
+      "not_dot_separator": 31,
+      "adv_split_share": 18,
+      "ord_wa_wrapper": 28,
+      "ord_qty_simple": 29,
+      "dir_income_gaji": 54,
+      "dir_income_refund_cashback": 31,
+      "not_slang_hokkien": 31,
+      "dir_lexical_trap": 33,
+      "ord_topup_ewallet": 14,
+      "adv_correction_amount": 24,
+      "reg_regional_lexicon": 41,
+      "noi_voice_rambling": 26,
+      "dir_mixed_message": 21,
+      "noi_typo_heavy": 30,
+      "adv_discount_net": 12,
+      "adv_price_copy_bait": 18,
+      "adv_phantom_income_bait": 7,
+      "adv_fee_plus_principal": 12,
+      "adv_correction_magnitude": 2
+    },
+    "byTier": {
+      "direction": 188,
+      "non_tx": 239,
+      "ordinary": 448,
+      "notation": 150,
+      "adversarial": 110,
+      "register_noise": 97
+    },
+    "bySplit": {
+      "train": 1049,
+      "eval_iid": 127,
+      "eval_compositional": 56
+    },
+    "zeroYieldAspects": [
+      "ord_no_date",
+      "adv_qty_x_unit",
+      "adv_fuzzy_amount"
+    ],
+    "nonTransactionRowShare": 0.185,
+    "entryLevelPemasukanShare": 0.23,
+    "dateHint": {
+      "hari_ini": 1038,
+      "minggu_ini": 153,
+      "kemarin": 510,
+      "bulan_ini": 83,
+      "tidak_jelas": 3
+    }
+  },
+  "counts": {
+    "accepted": 1232,
+    "attempts": 2528,
+    "successRate": 0.487
+  },
+  "rejectsByPhase": {
+    "text:bijection": 200,
+    "agreement": 780,
+    "label:trace": 66,
+    "label:dropped-entry": 54,
+    "text:leak": 69,
+    "label:schema": 40,
+    "dedup": 87
+  },
+  "perCellAcceptRate": {
+    "ord_single_out-00": 1,
+    "ord_single_out-01": 0,
+    "ord_single_out-02": 0.111,
+    "ord_single_out-03": 1,
+    "ord_single_out-04": 0,
+    "ord_single_out-05": 0,
+    "ord_single_out-06": 0,
+    "ord_single_out-07": 0,
+    "ord_single_out-08": 1,
+    "ord_single_out-09": 0,
+    "ord_single_out-10": 0.556,
+    "ord_single_out-11": 0.667,
+    "ord_single_out-12": 0.857,
+    "ord_single_out-13": 1,
+    "ord_single_out-14": 1,
+    "ord_single_out-15": 1,
+    "ord_single_out-16": 0,
+    "ord_single_out-17": 1,
+    "ord_single_out-18": 1,
+    "ord_single_out-19": 1,
+    "ord_single_out-20": 1,
+    "ord_single_out-21": 1,
+    "ord_single_out-22": 0,
+    "ord_single_out-23": 0,
+    "ord_single_out-24": 0,
+    "ord_single_in-00": 1,
+    "ord_single_in-01": 0,
+    "ord_single_in-02": 1,
+    "ord_single_in-03": 0,
+    "ord_single_in-04": 1,
+    "ord_single_in-05": 0,
+    "ord_multi_out-00": 0,
+    "ord_multi_out-01": 0.222,
+    "ord_multi_out-02": 1,
+    "ord_multi_out-03": 0.857,
+    "ord_multi_out-04": 0.75,
+    "ord_multi_out-05": 1,
+    "ord_multi_out-06": 1,
+    "ord_multi_out-07": 0.222,
+    "ord_multi_out-08": 1,
+    "ord_multi_out-09": 1,
+    "ord_multi_out-10": 1,
+    "ord_multi_out-11": 1,
+    "ord_multi_out-12": 1,
+    "ord_multi_out-13": 1,
+    "ord_multi_out-14": 0,
+    "ord_rekap_list-00": 1,
+    "ord_rekap_list-01": 0,
+    "ord_rekap_list-02": 1,
+    "ord_rekap_list-03": 0.857,
+    "ord_rekap_list-04": 0.333,
+    "ord_rekap_list-05": 0,
+    "ord_rekap_list-06": 0.857,
+    "ord_rekap_list-07": 1,
+    "ord_rekap_list-08": 0.429,
+    "ord_vendor_named-00": 1,
+    "ord_vendor_named-01": 0,
+    "ord_vendor_named-02": 0.222,
+    "ord_vendor_named-03": 1,
+    "ord_vendor_named-04": 1,
+    "ord_vendor_named-05": 0.222,
+    "ord_vendor_named-06": 0,
+    "ord_vendor_named-07": 1,
+    "ord_vendor_named-08": 1,
+    "ord_vendor_named-09": 0,
+    "ord_vendor_named-10": 1,
+    "ord_vendor_named-11": 1,
+    "ord_rail_named-00": 1,
+    "ord_rail_named-01": 0,
+    "ord_rail_named-02": 1,
+    "ord_rail_named-03": 1,
+    "ord_rail_named-04": 1,
+    "ord_rail_named-05": 1,
+    "ord_rail_named-06": 1,
+    "ord_rail_named-07": 0.444,
+    "ord_rail_named-08": 0,
+    "ord_recurring_bill-00": 0.444,
+    "ord_recurring_bill-01": 0,
+    "ord_recurring_bill-02": 0.857,
+    "ord_recurring_bill-03": 1,
+    "ord_recurring_bill-04": 1,
+    "ord_recurring_bill-05": 0,
+    "ord_recurring_bill-06": 1,
+    "ord_recurring_bill-07": 1,
+    "ord_recurring_bill-08": 1,
+    "ord_topup_ewallet-00": 0.222,
+    "ord_topup_ewallet-01": 1,
+    "ord_topup_ewallet-02": 0,
+    "ord_topup_ewallet-03": 0,
+    "ord_topup_ewallet-04": 0.667,
+    "ord_topup_ewallet-05": 0,
+    "ord_date_relative-00": 0.625,
+    "ord_date_relative-01": 0.857,
+    "ord_date_relative-02": 1,
+    "ord_date_relative-03": 0.857,
+    "ord_date_relative-04": 0.857,
+    "ord_date_relative-05": 1,
+    "ord_date_relative-06": 1,
+    "ord_date_relative-07": 0.75,
+    "ord_date_relative-08": 1,
+    "ord_date_relative-09": 1,
+    "ord_date_relative-10": 1,
+    "ord_date_relative-11": 0.556,
+    "ord_no_date-00": 0,
+    "ord_no_date-01": 0,
+    "ord_no_date-02": 0,
+    "ord_no_date-03": 0,
+    "ord_no_date-04": 0,
+    "ord_no_date-05": 0,
+    "ord_no_date-06": 0,
+    "ord_no_date-07": 0,
+    "ord_no_date-08": 0,
+    "ord_no_date-09": 0,
+    "ord_no_date-10": 0,
+    "ord_no_date-11": 0,
+    "ord_qty_simple-00": 0.333,
+    "ord_qty_simple-01": 0,
+    "ord_qty_simple-02": 0,
+    "ord_qty_simple-03": 1,
+    "ord_qty_simple-04": 0.5,
+    "ord_qty_simple-05": 1,
+    "ord_qty_simple-06": 0,
+    "ord_qty_simple-07": 1,
+    "ord_qty_simple-08": 0.833,
+    "ord_wa_wrapper-00": 1,
+    "ord_wa_wrapper-01": 0,
+    "ord_wa_wrapper-02": 1,
+    "ord_wa_wrapper-03": 0,
+    "ord_wa_wrapper-04": 0,
+    "ord_wa_wrapper-05": 1,
+    "ord_wa_wrapper-06": 0,
+    "ord_wa_wrapper-07": 1,
+    "ord_wa_wrapper-08": 1,
+    "not_dot_separator-00": 0.444,
+    "not_dot_separator-01": 1,
+    "not_dot_separator-02": 0,
+    "not_dot_separator-03": 1,
+    "not_dot_separator-04": 1,
+    "not_dot_separator-05": 0.444,
+    "not_dot_separator-06": 0.75,
+    "not_dot_separator-07": 0,
+    "not_dot_separator-08": 0,
+    "not_k_suffix_decimal-00": 1,
+    "not_k_suffix_decimal-01": 0,
+    "not_k_suffix_decimal-02": 0.444,
+    "not_k_suffix_decimal-03": 0,
+    "not_k_suffix_decimal-04": 1,
+    "not_k_suffix_decimal-05": 1,
+    "not_k_suffix_decimal-06": 0,
+    "not_k_suffix_decimal-07": 1,
+    "not_spelled_amount-00": 1,
+    "not_spelled_amount-01": 1,
+    "not_spelled_amount-02": 1,
+    "not_spelled_amount-03": 1,
+    "not_spelled_amount-04": 0,
+    "not_spelled_amount-05": 0.857,
+    "not_slang_hokkien-00": 0,
+    "not_slang_hokkien-01": 0,
+    "not_slang_hokkien-02": 0,
+    "not_slang_hokkien-03": 0.111,
+    "not_slang_hokkien-04": 0.444,
+    "not_slang_hokkien-05": 0,
+    "not_slang_hokkien-06": 0,
+    "not_slang_hokkien-07": 0,
+    "not_slang_hokkien-08": 0,
+    "not_slang_hokkien-09": 0.222,
+    "not_slang_hokkien-10": 0,
+    "not_slang_hokkien-11": 1,
+    "not_slang_hokkien-12": 0.556,
+    "not_slang_hokkien-13": 0.556,
+    "not_regional_numeral-00": 1,
+    "not_regional_numeral-01": 0,
+    "not_regional_numeral-02": 0,
+    "not_regional_numeral-03": 1,
+    "not_regional_numeral-04": 0.857,
+    "not_regional_numeral-05": 0.857,
+    "reg_regional_lexicon-00": 0.8,
+    "reg_regional_lexicon-01": 1,
+    "reg_regional_lexicon-02": 1,
+    "reg_regional_lexicon-03": 0,
+    "reg_regional_lexicon-04": 1,
+    "reg_regional_lexicon-05": 0,
+    "reg_regional_lexicon-06": 0.222,
+    "reg_regional_lexicon-07": 1,
+    "reg_regional_lexicon-08": 0.667,
+    "reg_regional_lexicon-09": 0.857,
+    "noi_typo_heavy-00": 0,
+    "noi_typo_heavy-01": 1,
+    "noi_typo_heavy-02": 0,
+    "noi_typo_heavy-03": 1,
+    "noi_typo_heavy-04": 1,
+    "noi_typo_heavy-05": 0.667,
+    "noi_typo_heavy-06": 0.857,
+    "noi_voice_rambling-00": 0,
+    "noi_voice_rambling-01": 1,
+    "noi_voice_rambling-02": 1,
+    "noi_voice_rambling-03": 1,
+    "noi_voice_rambling-04": 0.857,
+    "noi_voice_rambling-05": 0.222,
+    "dir_income_gaji-00": 1,
+    "dir_income_gaji-01": 1,
+    "dir_income_gaji-02": 1,
+    "dir_income_gaji-03": 1,
+    "dir_income_gaji-04": 1,
+    "dir_income_gaji-05": 0.75,
+    "dir_income_gaji-06": 1,
+    "dir_income_gaji-07": 1,
+    "dir_income_gaji-08": 1,
+    "dir_income_refund_cashback-00": 0,
+    "dir_income_refund_cashback-01": 1,
+    "dir_income_refund_cashback-02": 0.333,
+    "dir_income_refund_cashback-03": 1,
+    "dir_income_refund_cashback-04": 0,
+    "dir_income_refund_cashback-05": 1,
+    "dir_income_refund_cashback-06": 1,
+    "dir_income_refund_cashback-07": 0,
+    "dir_income_refund_cashback-08": 1,
+    "dir_income_transfer_masuk-00": 0.333,
+    "dir_income_transfer_masuk-01": 0,
+    "dir_income_transfer_masuk-02": 0,
+    "dir_income_transfer_masuk-03": 1,
+    "dir_income_transfer_masuk-04": 1,
+    "dir_income_transfer_masuk-05": 0.667,
+    "dir_income_transfer_masuk-06": 1,
+    "dir_income_transfer_masuk-07": 1,
+    "dir_income_transfer_masuk-08": 0.857,
+    "dir_mixed_message-00": 1,
+    "dir_mixed_message-01": 1,
+    "dir_mixed_message-02": 0,
+    "dir_mixed_message-03": 0,
+    "dir_mixed_message-04": 0,
+    "dir_mixed_message-05": 0.5,
+    "dir_mixed_message-06": 0.111,
+    "dir_mixed_message-07": 0.75,
+    "dir_mixed_message-08": 0,
+    "dir_mixed_message-09": 0,
+    "dir_mixed_message-10": 0,
+    "dir_lexical_trap-00": 1,
+    "dir_lexical_trap-01": 1,
+    "dir_lexical_trap-02": 1,
+    "dir_lexical_trap-03": 0.444,
+    "dir_lexical_trap-04": 1,
+    "dir_lexical_trap-05": 1,
+    "dir_topup_not_income-00": 1,
+    "dir_topup_not_income-01": 0,
+    "dir_topup_not_income-02": 1,
+    "dir_topup_not_income-03": 0.222,
+    "dir_topup_not_income-04": 0.625,
+    "dir_topup_not_income-05": 0,
+    "ntx_curhat-00": 1,
+    "ntx_curhat-01": 1,
+    "ntx_curhat-02": 1,
+    "ntx_curhat-03": 1,
+    "ntx_curhat-04": 1,
+    "ntx_curhat-05": 1,
+    "ntx_curhat-06": 0.75,
+    "ntx_curhat-07": 1,
+    "ntx_curhat-08": 0.333,
+    "ntx_curhat-09": 0.333,
+    "ntx_curhat-10": 0.625,
+    "ntx_curhat-11": 0.444,
+    "ntx_curhat-12": 0.857,
+    "ntx_curhat-13": 1,
+    "ntx_future_intent-00": 1,
+    "ntx_future_intent-01": 1,
+    "ntx_future_intent-02": 1,
+    "ntx_future_intent-03": 1,
+    "ntx_future_intent-04": 1,
+    "ntx_future_intent-05": 0.444,
+    "ntx_future_intent-06": 1,
+    "ntx_future_intent-07": 1,
+    "ntx_future_intent-08": 1,
+    "ntx_future_intent-09": 1,
+    "ntx_future_intent-10": 1,
+    "ntx_future_intent-11": 1,
+    "ntx_future_intent-12": 1,
+    "ntx_future_intent-13": 1,
+    "ntx_future_intent-14": 1,
+    "ntx_future_intent-15": 1,
+    "ntx_future_intent-16": 1,
+    "ntx_future_intent-17": 1,
+    "ntx_cancelled-00": 1,
+    "ntx_cancelled-01": 1,
+    "ntx_cancelled-02": 0.111,
+    "ntx_cancelled-03": 0.857,
+    "ntx_cancelled-04": 0.444,
+    "ntx_cancelled-05": 1,
+    "ntx_cancelled-06": 1,
+    "ntx_query-00": 1,
+    "ntx_query-01": 0.857,
+    "ntx_query-02": 1,
+    "ntx_query-03": 1,
+    "ntx_query-04": 0.222,
+    "ntx_query-05": 0.75,
+    "ntx_query-06": 0.333,
+    "ntx_query-07": 0.857,
+    "ntx_query-08": 0.222,
+    "ntx_query-09": 0.333,
+    "ntx_query-10": 0,
+    "adv_correction_amount-00": 0.857,
+    "adv_correction_amount-01": 0.444,
+    "adv_correction_amount-02": 0.857,
+    "adv_correction_amount-03": 0.444,
+    "adv_correction_amount-04": 0.444,
+    "adv_correction_magnitude-00": 0.222,
+    "adv_correction_magnitude-01": 0,
+    "adv_correction_magnitude-02": 0,
+    "adv_price_copy_bait-00": 1,
+    "adv_price_copy_bait-01": 0,
+    "adv_price_copy_bait-02": 0.667,
+    "adv_price_copy_bait-03": 0,
+    "adv_price_copy_bait-04": 1,
+    "adv_qty_x_unit-00": 0,
+    "adv_qty_x_unit-01": 0,
+    "adv_qty_x_unit-02": 0,
+    "adv_split_share-00": 0.857,
+    "adv_split_share-01": 0.75,
+    "adv_split_share-02": 1,
+    "adv_discount_net-00": 0.857,
+    "adv_discount_net-01": 1,
+    "adv_discount_net-02": 0,
+    "adv_fee_plus_principal-00": 0,
+    "adv_fee_plus_principal-01": 1,
+    "adv_fee_plus_principal-02": 1,
+    "adv_fuzzy_amount-00": 0,
+    "adv_fuzzy_amount-01": 0,
+    "adv_fuzzy_amount-02": 0,
+    "adv_past_plus_future-00": 1,
+    "adv_past_plus_future-01": 1,
+    "adv_past_plus_future-02": 1,
+    "adv_phantom_income_bait-00": 0.111,
+    "adv_phantom_income_bait-01": 1,
+    "not_slang_hokkien-x00": 0.857,
+    "not_slang_hokkien-x01": 0,
+    "not_slang_hokkien-x02": 0,
+    "not_slang_hokkien-x03": 0.222,
+    "not_slang_hokkien-x04": 0,
+    "not_regional_numeral-x00": 1,
+    "not_regional_numeral-x01": 1
+  },
+  "weakCells": [
+    {
+      "id": "ord_single_out-01",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-04",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-05",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-06",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-07",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-09",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-16",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-22",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-23",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_out-24",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_in-01",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_in-03",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_single_in-05",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_multi_out-00",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_multi_out-14",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_rekap_list-01",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_rekap_list-05",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_vendor_named-01",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_vendor_named-06",
+      "acceptRate": 0
+    },
+    {
+      "id": "ord_vendor_named-09",
+      "acceptRate": 0
+    }
+  ],
+  "traceTierHistogram": {
+    "direct": 1758,
+    "derived": 29
+  },
+  "maxSimilarityVsScoredCorpus": {
+    "p50": 0.207,
+    "p95": 0.357,
+    "max": 0.5625
+  },
+  "mlxCommand": "mlx_lm.lora --train --data /Users/izzadev/Projects/chat-keuangan-bench/data/sft/2026-07-17-11-03-53 --mask-prompt --model Qwen/Qwen3-1.7B --batch-size 4 --num-layers -1"
+}

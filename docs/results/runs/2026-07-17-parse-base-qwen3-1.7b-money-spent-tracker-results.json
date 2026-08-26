@@ -1,0 +1,170 @@
+{
+  "kind": "parse-base",
+  "suite": "base",
+  "runAt": "2026-07-17T10:04:14.859Z",
+  "modelId": "qwen3-1.7b-money-spent-tracker",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "passCount": 13,
+  "total": 28,
+  "meanMs": 1587.75,
+  "byStyle": {
+    "casual_slang": {
+      "pass": 0,
+      "total": 3
+    },
+    "income": {
+      "pass": 4,
+      "total": 4
+    },
+    "whatsapp_short": {
+      "pass": 1,
+      "total": 2
+    },
+    "typo_slang": {
+      "pass": 1,
+      "total": 1
+    },
+    "ambiguous_amount": {
+      "pass": 1,
+      "total": 3
+    },
+    "multi_entry": {
+      "pass": 0,
+      "total": 2
+    },
+    "formal_dictation": {
+      "pass": 2,
+      "total": 4
+    },
+    "non_transaction": {
+      "pass": 2,
+      "total": 2
+    },
+    "pesantren": {
+      "pass": 1,
+      "total": 4
+    },
+    "split_bill": {
+      "pass": 0,
+      "total": 1
+    },
+    "bulk_list": {
+      "pass": 0,
+      "total": 1
+    },
+    "future_intent": {
+      "pass": 1,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "user-example-maren-bakmi",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 12000 [sarden]",
+        "missing/unmatched expected: pengeluaran 12000 [bakmi]",
+        "missing/unmatched expected: pengeluaran 12000 [bakmi]",
+        "extra entries: pengeluaran 12000 \"beli sarden\""
+      ]
+    },
+    {
+      "id": "bensin-parkir-mall",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 5000 [parkir]"
+      ]
+    },
+    {
+      "id": "wa-catat-nasi-padang",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 25000 [nasi,padang]",
+        "extra entries: pemasukan 25000 \"nasi padang\""
+      ]
+    },
+    {
+      "id": "belanja-bulanan-800an",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 800000 [belanja]",
+        "extra entries: pengeluaran 800 \"belanja bulanan\""
+      ]
+    },
+    {
+      "id": "transfer-ortu-buku",
+      "issues": [
+        "missing/unmatched expected: pemasukan 500000 [transfer]",
+        "missing/unmatched expected: pengeluaran 80000 [buku]",
+        "extra entries: pemasukan 50000 \"transfer dari ortu\""
+      ]
+    },
+    {
+      "id": "infaq-jumat",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 50000 [infaq]",
+        "extra entries: pemasukan 50000 \"infaq masjid\""
+      ]
+    },
+    {
+      "id": "split-bill-makan",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 30000 [makan]",
+        "extra entries: pengeluaran 12000 \"makan siang bareng\""
+      ]
+    },
+    {
+      "id": "bulk-wa-list",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 87500 [indomaret]",
+        "extra entries: pengeluaran 35000 \"beli kopi\""
+      ]
+    },
+    {
+      "id": "listrik-500rb",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 500000 [listrik]",
+        "extra entries: pengeluaran 500 \"listrik\""
+      ]
+    },
+    {
+      "id": "shopee-cod-2-item",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 45000 [case,hp]",
+        "missing/unmatched expected: pengeluaran 25000 [kabel]",
+        "extra entries: pengeluaran 70000 \"beli HP dan kabel\""
+      ]
+    },
+    {
+      "id": "warung-ga-ingat-harga",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 20000 [warung]",
+        "extra entries: pengeluaran 20000 \"beli es teh dan pentol di warung\""
+      ]
+    },
+    {
+      "id": "catat-pengeluaran-formal-wafi",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 200000 [atk]",
+        "extra entries: pengeluaran 20000 \"pembelian ATK Toko Maju\""
+      ]
+    },
+    {
+      "id": "mixed-income-expense-santri",
+      "issues": [
+        "missing/unmatched expected: pemasukan 750000 [setoran]",
+        "missing/unmatched expected: pengeluaran 120000 [buku]",
+        "extra entries: pemasukan 75000 \"setoran wali Ahmad\""
+      ]
+    },
+    {
+      "id": "voice-rambling-pulsa",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 25000 [kuota]"
+      ]
+    },
+    {
+      "id": "zakat-fitrah-keluarga",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 180000 [zakat]",
+        "extra entries: pengeluaran 45000 \"zakat fitrah\""
+      ]
+    }
+  ]
+}

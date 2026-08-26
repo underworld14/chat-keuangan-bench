@@ -21,6 +21,10 @@ export {
 export {
   resolveModel,
   getLlmConfig,
+  getCompatibleLlmConfig,
+  getOpenAiLlmConfig,
   chatCompletion,
   applyLlmConfigOverrides,
+  LLM_PROVIDER_KINDS,
+  type LlmProviderKind,
 } from "./core/llm-client.ts";

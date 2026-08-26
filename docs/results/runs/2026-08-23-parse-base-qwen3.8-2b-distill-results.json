@@ -1,0 +1,168 @@
+{
+  "kind": "parse-base",
+  "suite": "base",
+  "runAt": "2026-08-23T10:55:48.315Z",
+  "modelId": "qwen3.8-2b-distill",
+  "baseURL": "http://127.0.0.1:1234/v1",
+  "passCount": 13,
+  "total": 28,
+  "meanMs": 7801.214285714285,
+  "byStyle": {
+    "casual_slang": {
+      "pass": 2,
+      "total": 3
+    },
+    "income": {
+      "pass": 3,
+      "total": 4
+    },
+    "whatsapp_short": {
+      "pass": 1,
+      "total": 2
+    },
+    "typo_slang": {
+      "pass": 1,
+      "total": 1
+    },
+    "ambiguous_amount": {
+      "pass": 0,
+      "total": 3
+    },
+    "multi_entry": {
+      "pass": 0,
+      "total": 2
+    },
+    "formal_dictation": {
+      "pass": 2,
+      "total": 4
+    },
+    "non_transaction": {
+      "pass": 0,
+      "total": 2
+    },
+    "pesantren": {
+      "pass": 3,
+      "total": 4
+    },
+    "split_bill": {
+      "pass": 0,
+      "total": 1
+    },
+    "bulk_list": {
+      "pass": 1,
+      "total": 1
+    },
+    "future_intent": {
+      "pass": 0,
+      "total": 1
+    }
+  },
+  "failures": [
+    {
+      "id": "belanja-bulanan-800an",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 800000 [belanja]",
+        "extra entries: pengeluaran 80000 \"belanja bulanan\""
+      ]
+    },
+    {
+      "id": "transfer-ortu-buku",
+      "issues": [
+        "missing/unmatched expected: pemasukan 500000 [transfer]",
+        "missing/unmatched expected: pengeluaran 80000 [buku]",
+        "extra entries: pemasukan 50000 \"transfer masuk dari ortu 500rb\"; pengeluaran 8000 \"beli buku 80rb\""
+      ]
+    },
+    {
+      "id": "atk-gojek-parkir-formal",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 350000 [atk]",
+        "missing/unmatched expected: pengeluaran 25000 [gojek,ongkir]",
+        "missing/unmatched expected: pengeluaran 5000 [parkir]",
+        "extra entries: pemasukan 350000 \"Beli ATK kantor\"; pemasukan 25000 \"Ongkir Gojek\"; pemasukan 5000 \"Parkir\""
+      ]
+    },
+    {
+      "id": "curhat-bukan-transaksi",
+      "issues": [
+        "JSON Parse error: Expected ']'"
+      ]
+    },
+    {
+      "id": "split-bill-makan",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 30000 [makan]",
+        "extra entries: pemasukan 30000 \"makan siang bareng 120rb dibagi 4 orang\"; pemasukan 30000 \"user punya 30rb sendiri\""
+      ]
+    },
+    {
+      "id": "spp-besok-belum",
+      "issues": [
+        "JSON Parse error: Unable to parse JSON string"
+      ]
+    },
+    {
+      "id": "shopee-cod-2-item",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 45000 [case,hp]",
+        "missing/unmatched expected: pengeluaran 25000 [kabel]",
+        "extra entries: pemasukan 45000 \"case hp\"; pemasukan 25000 \"kabel type c\""
+      ]
+    },
+    {
+      "id": "gopay-topup-100k",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "warung-ga-ingat-harga",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 20000 [warung]",
+        "extra entries: pengeluaran 20000 \"beli es teh sama pentol di warung\""
+      ]
+    },
+    {
+      "id": "salam-doang",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "ojek-15rb-atau-50rb-typo",
+      "issues": [
+        "No JSON block in model response"
+      ]
+    },
+    {
+      "id": "catat-pengeluaran-formal-wafi",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 200000 [atk]",
+        "extra entries: pengeluaran 20000 \"ATK Toko Maju\""
+      ]
+    },
+    {
+      "id": "mixed-income-expense-santri",
+      "issues": [
+        "missing/unmatched expected: pemasukan 750000 [setoran]",
+        "missing/unmatched expected: pengeluaran 120000 [buku]",
+        "extra entries: pemasukan 75000 \"Setoran wali Ahmad sebesar 750rb\"; pengeluaran 12000 \"Beli buku pelajaran untuk wali Ahmad sebesar 120rb\""
+      ]
+    },
+    {
+      "id": "voice-rambling-pulsa",
+      "issues": [
+        "missing/unmatched expected: pengeluaran 50000 [pulsa]",
+        "missing/unmatched expected: pengeluaran 25000 [kuota]",
+        "extra entries: pengeluaran 75000 \"Beli pulsa dan kuota untuk anak kos\""
+      ]
+    },
+    {
+      "id": "refund-marketplace",
+      "issues": [
+        "missing/unmatched expected: pemasukan 89000 [refund]",
+        "extra entries: pemasukan 89000 \"Refund Tokopedia masuk\""
+      ]
+    }
+  ]
+}
